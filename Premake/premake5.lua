@@ -10,9 +10,10 @@ binTmp   = projectRoot .. "Bin64/BinTmp"
 
 -- Relative to the included file (Include these in each sub premake build file if needed)
 includeDir = {}
-includeDir["Root"]   = ""
-includeDir["Common"] = "../Common/"
-includeDir["SDK"]    = "../SDK/"
+includeDir["Root"]         = ""
+includeDir["RootProjects"] = ".."
+includeDir["Common"]       = "../Common/"
+includeDir["SDKs"]         = "../SDKs/"
 
 -- Workspace
 workspace (projectName)
@@ -52,8 +53,9 @@ workspace (projectName)
 	--- Projects
 	group "KISSEngine"
 		include (code .. "Common")
-		--include (code .. "Graphics")
-		--include (code .. "CoreEngine")
+		include (code .. "SDKs")
+		include (code .. "Graphics")
+		include (code .. "CoreEngine")
 	group ""
 
 	include (code .. "Sandbox")

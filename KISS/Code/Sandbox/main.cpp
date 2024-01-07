@@ -1,15 +1,32 @@
 #include <stdafx.h>
 
+#include "Graphics/IRenderer.h"
 
 #ifdef CONSOLE_APP
 int main(int argc, char** argv)
 #else
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cmdshow)
 #endif
-{
+{ 
   LOG("Initializing Engine...");
 
-  // Define own assert (skippable)
+  Graphics::IRenderer* pRenderer = Graphics::CreateRenderer();
+
+  CVar* pVar = CConsole::Instance().GetCVar("r_width");
+
+  LOG("Renderer initialized...");
+
+  static string s_name;
+  REGISTER_CVAR(&s_name, "e_name", "KISS", "Name of the program");
+  CVar* pName = CConsole::Instance().GetCVar("e_name");
+
+  int kggg = 42;
+
+  // CVars
+  // set them via config file e.g.: .ini file with r_vulkanDebug=1
+
+
+  // GLWF or SDL?
 
   // Gameloop
 
@@ -17,10 +34,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
 
   // Inengine renderdoc (Press a button to do a capture)
 
-  // ImGUI
+  // ImGUI 
 
   // Multiview rendering / OpenXR
 
+  // Jemalloc
 
-  return 0; 
+  return 0;
 }

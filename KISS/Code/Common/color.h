@@ -69,16 +69,16 @@ public:
   byte GetBlue() const;
   byte GetAlpha() const;
 
-  bool    operator == (const Color& c) const;
-  bool    operator != (const Color& c) const;
-  Color   operator *  (const Color& c) const;
-  Color& operator *= (const Color& c);
+  bool   operator ==(const Color& c) const;
+  bool   operator !=(const Color& c) const;
+  Color  operator * (const Color& c) const;
+  Color& operator *=(const Color& c);
 
   // Converts to "(r, g, b)" or "(r, g, b, a)"
   string ToString(bool includeAlpha = false) const;
 
   //----------------------------------------------------------------------
-  // Linearly interpolate between color a and b.
+  // Linearly interpolates between color a and b.
   //----------------------------------------------------------------------
   static Color Lerp(Color a, Color b, f32 lerp);
 

@@ -20,11 +20,15 @@ project "Sandbox"
 
 	includedirs	
 	{ 
-		"%{includeDir.Common}",
-		"%{includeDir.Root}"
+		"%{includeDir.Root}",
+		"%{includeDir.RootProjects}",
+		"%{includeDir.SDKs}"
 	}
 
 	links 
 	{
-		"Common"
+		"Common",
+		"SDKs",
+		"Graphics",
+		"CoreEngine"
 	}

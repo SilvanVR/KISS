@@ -1,2 +1,2 @@
-#include <ProjectDefines.h>
-#include <logger.h>
+#include <Common/ProjectDefines.h>
+#include <CoreEngine/Console.h>
