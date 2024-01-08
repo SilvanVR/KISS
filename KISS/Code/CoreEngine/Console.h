@@ -37,19 +37,22 @@ private:
 class CConsole
 {
 public:
+  CConsole();
+
   void Log(const char* format, ...);
   void Warn(const char* format, ...);
   void Error(const char* format, ...);
   void SetColor(Color color, Color backgroundColor = Color::BLACK) const;
 
-  void RegisterCVar(int64* pVar, const string& name, int64 nVal, const string& tooltip);
-  void RegisterCVar(string* pVar, const string& name, const string& str, const string& tooltip);
+  void RegisterCVar(const string& name, int64* pVar, int64 nDefaultValue, const string& tooltip);
+  void RegisterCVar(const string& name, string* pVar, const string& nDefaultStr, const string& tooltip);
   CVar* GetCVar(const string& name);
 
   static CConsole& Instance();
 
 private:
-  std::unordered_map<string, CVar> m_cvars;
+  std::map<string, CVar> m_cvars;
+  std::unordered_map<string, string> m_iniMap;
 
   void _WriteLine(const char* pBuffer);
 };

@@ -19,11 +19,14 @@ namespace Graphics
     bool InitRenderer();
     void DeinitRenderer();
 
-  private:
-    int64 m_width  = 0;
-    int64 m_height = 0;
+    //////////////////////////
+    // CVARS
+    static int64 CV_r_width;
+    static int64 CV_r_height;
 
-    // Vulkan related stuff
+  private:
+
+    // Vulkan related members
     VkInstance m_instance = VK_NULL_HANDLE;
 
     void _RegisterCVars();

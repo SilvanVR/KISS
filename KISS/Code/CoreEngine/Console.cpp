@@ -1,15 +1,53 @@
 #include "stdafx_common.h"
 #include "Console.h"
+#include "FileSystem.h"
 
 #include <cstdarg>
 
 #define BUFFER_SIZE 512
+
+#define ENGINE_CONFIG "engine.ini"
 
 ////////////////////////////////////////////////////////////////////
 CConsole& CConsole::Instance()
 {
   static CConsole s_instance;
   return s_instance;
+}
+
+////////////////////////////////////////////////////////////////////
+CConsole::CConsole()
+{
+  if (CFile file = CFileSystem::Instance().ReadFile(ENGINE_CONFIG))
+  {
+    const string& contents = file.GetData();
+    std::vector<string> arrLines = CFileSystem::SplitString(contents, '\n');
+    for (const string& line : arrLines)
+    {
+      std::vector<string> arrLines = CFileSystem::SplitString(line, '=');
+      if (arrLines.empty())
+        continue;
+
+      if (arrLines.size() != 2)
+      {
+        Error("%s: Failed to read line: %s", ENGINE_CONFIG, line.c_str());
+        continue;
+      }
+
+      string name = CFileSystem::RemoveWhitespace(arrLines[0]);
+      if (m_iniMap.find(name) != m_iniMap.end())
+      {
+        Warn("%s: Duplicated entry '%s' found. Please make sure every entry exists once.", ENGINE_CONFIG, name.c_str());
+        continue;
+      }
+
+      string value = CFileSystem::RemoveWhitespace(arrLines[1]);
+      value = CFileSystem::RemoveCharacter(value, '"'); // Remove " character in strings
+      m_iniMap[name] = value;
+    }
+
+    Log("Successfully read %s (%llu entries read)", ENGINE_CONFIG, arrLines.size());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -55,7 +93,7 @@ void CConsole::Error(const char* format, ...)
 }
 
 ////////////////////////////////////////////////////////////////////
-void CConsole::RegisterCVar(int64* pVar, const string& name, int64 nVal, const string& tooltip)
+void CConsole::RegisterCVar(const string& name, int64* pVar, int64 nDefaultValue, const string& tooltip)
 {
   auto it = m_cvars.find(name);
   if (it != m_cvars.end())
@@ -64,14 +102,27 @@ void CConsole::RegisterCVar(int64* pVar, const string& name, int64 nVal, const s
     return;
   }
 
-  // Check if it exists in config file and assign if not
-  *pVar = nVal;
+  // If name exists in ini file use it otherwise apply default value
+  auto it2 = m_iniMap.find(name);
+  if (it2 == m_iniMap.end())
+  {
+    *pVar = nDefaultValue;
+  }
+  else
+  {
+    try {
+      *pVar = std::stoll(it2->second);
+    }
+    catch (const std::exception& e) {
+      LOG_WARN("CVar '%s' in '%s' is not a number (value: '%s') but was registered as one (error: %s). Please fix this.", name.c_str(), ENGINE_CONFIG, it2->second.c_str(), e.what());
+    }
+  }
 
   m_cvars[name] = CVar{ pVar, tooltip };
 }
 
 ////////////////////////////////////////////////////////////////////
-void CConsole::RegisterCVar(string* pVar, const string& name, const string& str, const string& tooltip)
+void CConsole::RegisterCVar(const string& name, string* pVar, const string& defaultString, const string& tooltip)
 {
   auto it = m_cvars.find(name);
   if (it != m_cvars.end())
@@ -80,8 +131,9 @@ void CConsole::RegisterCVar(string* pVar, const string& name, const string& str,
     return;
   }
 
-  // Check if it exists in config file and assign if not
-  *pVar = str;
+  // If name exists in ini file use it otherwise apply default value
+  auto it2 = m_iniMap.find(name);
+  *pVar = it2 == m_iniMap.end() ? defaultString : it2->second;
 
   m_cvars[name] = CVar{ pVar, tooltip };
 }

@@ -5,6 +5,10 @@
 namespace Graphics
 {
   ////////////////////////////////////////////////////////////////////
+  int64 CRenderer::CV_r_width;
+  int64 CRenderer::CV_r_height;
+
+  ////////////////////////////////////////////////////////////////////
   IRenderer* CreateRenderer()
   {
     LOG("Initializing Renderer...");
@@ -40,8 +44,8 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void CRenderer::_RegisterCVars()
   {
-    REGISTER_CVAR(&m_width,  "r_width",  1280, "Width of the rendering window");
-    REGISTER_CVAR(&m_height, "r_height", 720, "Height of the rendering window");
+    REGISTER_CVAR("r.width",  &CV_r_width, 1280, "Width of the rendering window");
+    REGISTER_CVAR("r.height", &CV_r_height, 720, "Height of the rendering window");
   }
 
   ////////////////////////////////////////////////////////////////////

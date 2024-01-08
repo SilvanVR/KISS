@@ -3,8 +3,10 @@
 #include <vector>
 #include <assert.h>
 #include <string>
+#include <map>
 #include <unordered_map>
 #include <array>
+#include <utility>
 
 using byte = uint8_t;
 
@@ -18,8 +20,3 @@ using f32 = float;
 using f64 = double;
 
 using string = std::string;
-
-#ifdef WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
