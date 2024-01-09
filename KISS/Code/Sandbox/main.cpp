@@ -9,21 +9,24 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
 #endif
 {
   static string s_name;
+  static string s_appName;
   REGISTER_CVAR("e.engineName", &s_name, "KISSEngine", "Name of the engine");
-
+  REGISTER_CVAR("appName", &s_appName, "NoName", "Name of the program");
+   
   LOG("Initializing Engine...");
 
-  Graphics::IRenderer* pRenderer = Graphics::CreateRenderer();
+  Graphics::IRenderer* pRenderer = Graphics::CreateRenderer(); 
 
-  LOG("Renderer initialized...");
+  LOG("Renderer initialized..."); 
 
-  // C++ modules
-  
-  // GLWF or SDL?
+  while (!pRenderer->ShouldClose())
+  {
+    pRenderer->BeginFrame();
 
-  // Gameloop
+    pRenderer->EndFrame();
+  }
 
-  // Vulkan (Window + Colored Triangle)
+  // Vulkan (Colored Triangle)
 
   // Inengine renderdoc (Press a button to do a capture)
 

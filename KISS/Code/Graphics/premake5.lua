@@ -20,5 +20,6 @@ project "Graphics"
 
 	links 
 	{
-		"CoreEngine"
+		"CoreEngine",
+		"glfw3dll"
 	}

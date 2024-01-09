@@ -24,24 +24,24 @@ CConsole::CConsole()
     std::vector<string> arrLines = CFileSystem::SplitString(contents, '\n');
     for (const string& line : arrLines)
     {
-      std::vector<string> arrLines = CFileSystem::SplitString(line, '=');
-      if (arrLines.empty())
+      std::vector<string> arrLine = CFileSystem::SplitString(line, '=');
+      if (arrLine.empty())
         continue;
 
-      if (arrLines.size() != 2)
+      if (arrLine.size() != 2)
       {
         Error("%s: Failed to read line: %s", ENGINE_CONFIG, line.c_str());
         continue;
       }
 
-      string name = CFileSystem::RemoveWhitespace(arrLines[0]);
+      string name = CFileSystem::RemoveWhitespace(arrLine[0]);
       if (m_iniMap.find(name) != m_iniMap.end())
       {
         Warn("%s: Duplicated entry '%s' found. Please make sure every entry exists once.", ENGINE_CONFIG, name.c_str());
         continue;
       }
 
-      string value = CFileSystem::RemoveWhitespace(arrLines[1]);
+      string value = CFileSystem::RemoveWhitespace(arrLine[1]);
       value = CFileSystem::RemoveCharacter(value, '"'); // Remove " character in strings
       m_iniMap[name] = value;
     }

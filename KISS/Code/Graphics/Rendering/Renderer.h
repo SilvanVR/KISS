@@ -8,6 +8,9 @@
 
 #include <SDKs/Volk/volk.h>
 
+#define GLFW_INCLUDE_VULKAN
+#include "glfw/glfw3.h"
+
 namespace Graphics
 {
   ////////////////////////////////////////////////////////////////////
@@ -20,11 +23,20 @@ namespace Graphics
     void DeinitRenderer();
 
     //////////////////////////
+    // IRenderer Interface
+    virtual bool ShouldClose() override;
+    virtual void BeginFrame() override;
+    virtual void EndFrame() override;
+
+    //////////////////////////
     // CVARS
     static int64 CV_r_width;
     static int64 CV_r_height;
 
   private:
+
+    // GLFW
+    GLFWwindow* m_pWindow;
 
     // Vulkan related members
     VkInstance m_instance = VK_NULL_HANDLE;

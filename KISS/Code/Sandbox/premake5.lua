@@ -32,3 +32,9 @@ project "Sandbox"
 		"Graphics",
 		"CoreEngine"
 	}
+	
+	filter "configurations:Debug"	  
+		targetname "SandboxDev"
+
+	filter "configurations:Release"
+		targetname "Sandbox"

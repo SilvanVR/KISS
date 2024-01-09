@@ -27,28 +27,24 @@ workspace (projectName)
 	configurations { "Debug", "Release" }
 	startproject "Sandbox"
 
-	-- Always link Common module
-	links 
-	{
-		--"Common"
-	}
-
 	-- Execute buildscript each time before we build (MAY BECOME TO EXPENSIVE IN THE FUTURE)
 	prebuildcommands { 'cd "$(ProjectDir)../.."', 'call "GenerateProject.bat"' }
 
 	-- filters
 	filter "system:windows"
-		cppdialect "C++17"
+		cppdialect "C++20"
 		systemversion "latest"
 		defines { "WIN32" }
 		
 	filter "configurations:Debug"	  
 		defines { "DEBUG" }
 		symbols "On"
+		buildoptions "/MDd"
 
 	filter "configurations:Release"
-		defines { "NDEBUG" }
+		defines { "RELEASE" }
 		optimize "On"
+		buildoptions "/MD"
 
 	--- Projects
 	group "KISSEngine"
@@ -59,7 +55,3 @@ workspace (projectName)
 	group ""
 
 	include (code .. "Sandbox")
-
-	group "Build"
-
-	group ""
