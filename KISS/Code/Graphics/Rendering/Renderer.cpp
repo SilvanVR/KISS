@@ -2,11 +2,16 @@
 
 #include "Renderer.h"
 
+#include <vulkan/vulkan_extension_inspection.hpp>
+
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 namespace Graphics
 {
   ////////////////////////////////////////////////////////////////////
-  int64 CRenderer::CV_r_width;
-  int64 CRenderer::CV_r_height;
+  int64 CRenderer::CV_r_width  = 0;
+  int64 CRenderer::CV_r_height = 0;
+  int64 CRenderer::CV_r_vsync  = 0;
 
   ////////////////////////////////////////////////////////////////////
   void GLFWErrorCallback(int code, const char* description)
@@ -40,6 +45,12 @@ namespace Graphics
     static f64 nUpdateTimerPerSecondFrequency = (1.0 / 2.0f);
     static f64 nUpdateTimerCountSecs = 0.0f;
     static f64 fLastTimeSecs = glfwGetTime();
+
+    if (bool(CV_r_vsync) != m_bVSync)
+    {
+      m_bVSync = CV_r_vsync;
+      
+    }
 
     f64 fCurTimeSecs = glfwGetTime();
     f64 fDeltaSecs = fCurTimeSecs - fLastTimeSecs;
@@ -88,8 +99,11 @@ namespace Graphics
       return false;
     }
 
-    result = _CreateVulkanInstance();
-    volkLoadInstance(m_instance);
+    _CreateVulkanInstance();
+    volkLoadInstance(m_vkInstance);
+
+    m_bVSync = bool(CV_r_vsync);
+    glfwWindowHint(GLFW_DOUBLEBUFFER, m_bVSync ? GLFW_TRUE : GLFW_FALSE);
 
     CVar* pAppName = CConsole::Instance().GetCVar("appName");
     m_pWindow = glfwCreateWindow((int)CV_r_width, (int)CV_r_height, pAppName->GetString().c_str(), NULL, NULL);
@@ -103,9 +117,6 @@ namespace Graphics
     //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     //glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 
-    static f64 nUpdateTimerPerSecondFrequency = (1.0 / 2.0f);
-    static f64 nUpdateTimerCountSecs = 0.0f;
-
     return true;
   }
 
@@ -114,44 +125,43 @@ namespace Graphics
   {
     REGISTER_CVAR("r.width",  &CV_r_width, 1280, "Width of the rendering window");
     REGISTER_CVAR("r.height", &CV_r_height, 720, "Height of the rendering window");
+    REGISTER_CVAR("r.vsync",  &CV_r_vsync,  1,   "Toggles vsync of the rendering");
   }
 
   ////////////////////////////////////////////////////////////////////
-  VkResult CRenderer::_CreateVulkanInstance()
+  void CRenderer::_CreateVulkanInstance()
   {
-    // Application information
-    VkApplicationInfo appInfo{};
-    appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName   = "KISS";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName        = "KissEngine";
-    appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion         = VK_API_VERSION_1_3;
+    VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
-    VkInstanceCreateInfo createInfo{};
-    createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
+    try
+    {
+      CVar* pAppName    = CConsole::Instance().GetCVar("appName");
+      CVar* pEngineName = CConsole::Instance().GetCVar("engineName");
+      vk::ApplicationInfo applicationInfo(
+        pAppName    ? pAppName->GetString().c_str()     : "NoName", 1, 
+        pEngineName ? pEngineName->GetString().c_str() : "NoEngineName", 
+        1, VK_API_VERSION_1_3
+      );
 
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
-    LOG("Available Vulkan extensions:");
-    for (const auto& extension : extensions) {
-      LOG(extension.extensionName);
-    }
-
-    const char* requiredExtensions[] = {
+      const char* arrExtensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
-    #ifdef _WIN32
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    #endif
-    };
-    createInfo.enabledExtensionCount = sizeof(requiredExtensions) / sizeof(requiredExtensions[0]);
-    createInfo.ppEnabledExtensionNames = requiredExtensions;
-
-    return vkCreateInstance(&createInfo, nullptr, &m_instance);
+#ifdef _WIN32
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+#endif
+      };
+      vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, {}, arrExtensions);
+      m_vkInstance = vk::createInstance(instanceCreateInfo);
+    }
+    catch (vk::SystemError& err)
+    {
+      LOG_ERROR("vk::SystemError: %s ", err.what());
+      exit(-1);
+    }
+    catch (std::exception& err)
+    {
+      LOG_ERROR("std::exception: %s ", err.what());
+      exit(-1);
+    }
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -159,6 +169,6 @@ namespace Graphics
   {
     glfwDestroyWindow(m_pWindow);
     glfwTerminate();
-    vkDestroyInstance(m_instance, nullptr);
+    m_vkInstance.destroy();
   }
 }

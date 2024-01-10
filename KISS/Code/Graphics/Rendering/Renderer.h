@@ -7,9 +7,9 @@
 #endif
 
 #include <SDKs/Volk/volk.h>
-
 #define GLFW_INCLUDE_VULKAN
-#include "glfw/glfw3.h"
+#include <glfw/glfw3.h>
+#include <vulkan/vulkan.hpp>
 
 namespace Graphics
 {
@@ -32,16 +32,18 @@ namespace Graphics
     // CVARS
     static int64 CV_r_width;
     static int64 CV_r_height;
+    static int64 CV_r_vsync;
 
   private:
+    bool m_bVSync = true;
 
     // GLFW
     GLFWwindow* m_pWindow;
 
     // Vulkan related members
-    VkInstance m_instance = VK_NULL_HANDLE;
+    vk::Instance m_vkInstance;
 
     void _RegisterCVars();
-    VkResult _CreateVulkanInstance();
+    void _CreateVulkanInstance();
   };
 };

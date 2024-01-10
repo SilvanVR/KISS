@@ -10,7 +10,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
 {
   static string s_name;
   static string s_appName;
-  REGISTER_CVAR("e.engineName", &s_name, "KISSEngine", "Name of the engine");
+  REGISTER_CVAR("engineName", &s_name, "KISSEngine", "Name of the engine");
   REGISTER_CVAR("appName", &s_appName, "NoName", "Name of the program");
    
   LOG("Initializing Engine...");
@@ -25,6 +25,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
 
     pRenderer->EndFrame();
   }
+
+  // Reminder: Turn on VOD on twitch (also fix twitch pings on discord!)
 
   // Vulkan (Colored Triangle)
 

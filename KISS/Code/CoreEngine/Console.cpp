@@ -28,6 +28,11 @@ CConsole::CConsole()
       if (arrLine.empty())
         continue;
 
+      // Skip non valid lines
+      char firstChar = arrLine.front()[0];
+      if ((firstChar < 'a' || firstChar > 'z') && (firstChar < 'A' || firstChar > 'Z'))
+        continue;
+
       if (arrLine.size() != 2)
       {
         Error("%s: Failed to read line: %s", ENGINE_CONFIG, line.c_str());
@@ -46,7 +51,7 @@ CConsole::CConsole()
       m_iniMap[name] = value;
     }
 
-    Log("Successfully read %s (%llu entries read)", ENGINE_CONFIG, arrLines.size());
+    Log("Successfully read %s (%llu entries read - %llu added)", ENGINE_CONFIG, arrLines.size(), m_iniMap.size());
   }
 }
 
