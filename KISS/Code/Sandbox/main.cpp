@@ -13,11 +13,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   REGISTER_CVAR("engineName", &s_name, "KISSEngine", "Name of the engine");
   REGISTER_CVAR("appName", &s_appName, "NoName", "Name of the program");
 
-  LOG("Initializing Engine...");
+  KISS_LOG_ALWAYS("Initializing Engine...");
 
   Graphics::IRenderer* pRenderer = Graphics::CreateRenderer(); 
-   
-  LOG("Renderer initialized..."); 
+
+  KISS_LOG_ALWAYS("Renderer initialized...");
 
   while (!pRenderer->ShouldClose())
   {
@@ -26,7 +26,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
     pRenderer->EndFrame();
   }
 
-  // Logfile
+
+
+
+  // Add vulkan validation output to logfile (debug callback needs to call into console)
 
   // Vulkan (Colored Triangle)
 

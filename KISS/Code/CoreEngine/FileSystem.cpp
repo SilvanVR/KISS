@@ -25,7 +25,7 @@ CFile CFileSystem::ReadFile(const string& fileName)
 
   if (!file.is_open())
   {
-    LOG_ERROR("Error opening file: %s", strRealPath.c_str());
+    KISS_LOG_ERROR("Error opening file: %s", strRealPath.c_str());
     return CFile{};
   }
 
@@ -34,4 +34,25 @@ CFile CFileSystem::ReadFile(const string& fileName)
   file.close();
 
   return CFile{ std::move(content) };
+}
+
+////////////////////////////////////////////////////////////////////
+void CFileSystem::WriteFile(const string& fileName, const char* pBuffer, EFileWriteFlags eFlags)
+{
+  std::ofstream file;
+
+  switch (eFlags)
+  {
+  case EFileWriteFlags::Clear:  file.open(fileName, std::ios::out); break;
+  case EFileWriteFlags::Append: file.open(fileName, std::ios::out | std::ios::app); break;
+  }
+
+  if (!file.is_open()) {
+    KISS_LOG_ERROR("Error opening file: %s", fileName.c_str());
+    return;
+  }
+
+  file << pBuffer;
+
+  file.close();
 }

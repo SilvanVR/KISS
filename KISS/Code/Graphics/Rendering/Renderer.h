@@ -45,8 +45,10 @@ namespace Graphics
     vk::Instance       m_vkInstance;
     vk::PhysicalDevice m_vkPhysicalDevice; 
     vk::Device         m_vkDevice;
+    vk::SurfaceKHR     m_vkSurface;
 
     void _RegisterCVars();
     void _InitVulkan();
+    void _CreateWindow();
   };
 };

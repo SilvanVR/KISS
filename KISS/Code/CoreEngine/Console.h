@@ -40,6 +40,7 @@ public:
   CConsole();
 
   void Log(const char* format, ...);
+  void LogAlways(const char* format, ...);
   void Warn(const char* format, ...);
   void Error(const char* format, ...);
   void SetColor(Color color, Color backgroundColor = Color::BLACK) const;
@@ -50,23 +51,29 @@ public:
 
   static CConsole& Instance();
 
+  static int64 CV_r_logVerbosity;
+
 private:
   std::map<string, CVar> m_cvars;
   std::unordered_map<string, string> m_iniMap;
-
+  
+  void _Log(const char* pBuffer);
+  void _RegisterCVars();
   void _WriteLine(const char* pBuffer);
+  void _PrintToConsole(const char* pBuffer);
 };
 
-#define LOG(format, ...)       CConsole::Instance().Log(format, ##__VA_ARGS__)
-#define LOG_WARN(format, ...)  CConsole::Instance().Warn(format, ##__VA_ARGS__)
-#define LOG_ERROR(format, ...) CConsole::Instance().Error(format, ##__VA_ARGS__)
+#define KISS_LOG(format, ...)        CConsole::Instance().Log(format, ##__VA_ARGS__)
+#define KISS_LOG_ALWAYS(format, ...) CConsole::Instance().LogAlways(format, ##__VA_ARGS__)
+#define KISS_LOG_WARN(format, ...)   CConsole::Instance().Warn(format, ##__VA_ARGS__)
+#define KISS_LOG_ERROR(format, ...)  CConsole::Instance().Error(format, ##__VA_ARGS__)
 
 #define KISS_FATAL(format, ...) \
 CConsole::Instance().Error(format, ##__VA_ARGS__);\
 exit(1);
 
 #define KISS_FATAL_COND(cond, format, ...) \
- if (cond){\
+ if (!cond){\
  CConsole::Instance().Error(format, ##__VA_ARGS__); \
  exit(1);}
 

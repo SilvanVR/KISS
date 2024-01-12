@@ -1,6 +1,13 @@
 #pragma once
 
 ////////////////////////////////////////////////////////////////////
+enum class EFileWriteFlags
+{
+  Clear,
+  Append
+};
+
+////////////////////////////////////////////////////////////////////
 class CFile
 {
 public:
@@ -24,6 +31,7 @@ public:
   ~CFileSystem() = default;
 
   CFile ReadFile(const string& fileName);
+  void WriteFile(const string& fileName, const char* pBuffer, EFileWriteFlags eFlags);
 
   static CFileSystem& Instance();
 

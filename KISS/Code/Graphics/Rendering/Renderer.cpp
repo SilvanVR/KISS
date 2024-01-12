@@ -16,13 +16,13 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void GLFWErrorCallback(int code, const char* description)
   {
-    LOG_ERROR("GLFW Error %d: %s", code, description);
+    KISS_LOG_ERROR("GLFW Error %d: %s", code, description);
   }
 
   ////////////////////////////////////////////////////////////////////
   IRenderer* CreateRenderer()
   {
-    LOG("Initializing Renderer...");
+    KISS_LOG_ALWAYS("Initializing Renderer...");
     CRenderer* pRenderer = new CRenderer;
     pRenderer->InitRenderer();
     return pRenderer;
@@ -66,7 +66,6 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void CRenderer::EndFrame()
   {
-    glfwSwapBuffers(m_pWindow);
     glfwPollEvents();
   }
 
@@ -78,20 +77,14 @@ namespace Graphics
     m_bVSync = bool(CV_r_vsync);
 
     bool bSuccess = glfwInit();
-    KISS_FATAL_COND(!bSuccess, "Failed to initialize glfw");
+    KISS_FATAL_COND(bSuccess, "Failed to initialize glfw");
 
     glfwSetErrorCallback(GLFWErrorCallback); 
 
-    int nVal = glfwVulkanSupported();
     assert(glfwVulkanSupported() == GLFW_TRUE);
 
+    _CreateWindow();
     _InitVulkan();
-
-    glfwWindowHint(GLFW_DOUBLEBUFFER, m_bVSync ? GLFW_TRUE : GLFW_FALSE);
-
-    CVar* pAppName = CConsole::Instance().GetCVar("appName");
-    m_pWindow = glfwCreateWindow((int)CV_r_width, (int)CV_r_height, pAppName->GetString().c_str(), NULL, NULL);
-    KISS_FATAL_COND(m_pWindow, "Failed to create Window");
 
     // Borderless fullscreen
     //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -104,6 +97,16 @@ namespace Graphics
     REGISTER_CVAR("r.width",  &CV_r_width, 1280, "Width of the rendering window");
     REGISTER_CVAR("r.height", &CV_r_height, 720, "Height of the rendering window");
     REGISTER_CVAR("r.vsync",  &CV_r_vsync,  1,   "Toggles vsync of the rendering");
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  void CRenderer::_CreateWindow()
+  {
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_DOUBLEBUFFER, m_bVSync ? GLFW_TRUE : GLFW_FALSE);
+    CVar* pAppName = CConsole::Instance().GetCVar("appName");
+    m_pWindow = glfwCreateWindow((int)CV_r_width, (int)CV_r_height, pAppName->GetString().c_str(), NULL, NULL);
+    KISS_FATAL_COND(m_pWindow, "Failed to create Window");
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -122,14 +125,16 @@ namespace Graphics
           pEngineName ? pEngineName->GetString().c_str() : "NoEngineName", 
           1, VK_API_VERSION_1_3
         );
-
-        const char* arrExtensions[] = {
+        
+        std::vector<char const*> arrLayers;
+        // arrLayers.push_back( "VK_LAYER_KHRONOS_validation" );
+        std::vector<char const*> arrExtensions = {
           VK_KHR_SURFACE_EXTENSION_NAME,
   #ifdef _WIN32
           VK_KHR_WIN32_SURFACE_EXTENSION_NAME
   #endif
         };
-        vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, {}, arrExtensions);
+        vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, arrLayers, arrExtensions);
         m_vkInstance = vk::createInstance(instanceCreateInfo);
         VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkInstance);
       }
@@ -141,13 +146,13 @@ namespace Graphics
         {
           const vk::PhysicalDevice& physicalDevice = physicalDevices[i];
           vk::PhysicalDeviceProperties props = physicalDevice.getProperties();
-          LOG("[%u] GPU found: %s", i, props.deviceName);
+          KISS_LOG_ALWAYS("[%u] GPU found: %s", i, props.deviceName);
         }
 
-        KISS_FATAL_COND(physicalDevices.empty(), "No GPU found on your system. Please PLUG IN A FUCKING GPU!!!111!!");
+        KISS_FATAL_COND(!physicalDevices.empty(), "No GPU found on your system. Please PLUG IN A FUCKING GPU!!!111!!");
 
         m_vkPhysicalDevice = physicalDevices.front();
-        LOG("Using GPU: %s", m_vkPhysicalDevice.getProperties().deviceName);
+        KISS_LOG_ALWAYS("Using GPU: %s", m_vkPhysicalDevice.getProperties().deviceName);
       }
 
       // Logical Device
@@ -163,6 +168,13 @@ namespace Graphics
         vk::DeviceQueueCreateInfo deviceQueueCreateInfo(vk::DeviceQueueCreateFlags(), static_cast<uint32_t>(graphicsQueueFamilyIndex), 1, &queuePriority);
         m_vkDevice = m_vkPhysicalDevice.createDevice(vk::DeviceCreateInfo(vk::DeviceCreateFlags(), deviceQueueCreateInfo));
         VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkDevice);
+      }
+
+      // Surface
+      {
+        VkSurfaceKHR _surface;
+        glfwCreateWindowSurface(static_cast<VkInstance>(m_vkInstance), m_pWindow, nullptr, &_surface);
+        m_vkSurface = vk::SurfaceKHR(_surface);
       }
     }
     catch (vk::SystemError& err)
