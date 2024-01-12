@@ -12,11 +12,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   static string s_appName;
   REGISTER_CVAR("engineName", &s_name, "KISSEngine", "Name of the engine");
   REGISTER_CVAR("appName", &s_appName, "NoName", "Name of the program");
-   
+
   LOG("Initializing Engine...");
 
   Graphics::IRenderer* pRenderer = Graphics::CreateRenderer(); 
-
+   
   LOG("Renderer initialized..."); 
 
   while (!pRenderer->ShouldClose())
@@ -26,7 +26,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
     pRenderer->EndFrame();
   }
 
-  // Reminder: Turn on VOD on twitch (also fix twitch pings on discord!)
+  // Logfile
 
   // Vulkan (Colored Triangle)
 

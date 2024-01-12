@@ -21,10 +21,10 @@ CConsole::CConsole()
   if (CFile file = CFileSystem::Instance().ReadFile(ENGINE_CONFIG))
   {
     const string& contents = file.GetData();
-    std::vector<string> arrLines = CFileSystem::SplitString(contents, '\n');
+    std::vector<string> arrLines = StringUtils::SplitString(contents, '\n');
     for (const string& line : arrLines)
     {
-      std::vector<string> arrLine = CFileSystem::SplitString(line, '=');
+      std::vector<string> arrLine = StringUtils::SplitString(line, '=');
       if (arrLine.empty())
         continue;
 
@@ -39,15 +39,16 @@ CConsole::CConsole()
         continue;
       }
 
-      string name = CFileSystem::RemoveWhitespace(arrLine[0]);
+      string name = StringUtils::RemoveWhitespace(arrLine[0]);
+      name = StringUtils::ToLower(name);
       if (m_iniMap.find(name) != m_iniMap.end())
       {
         Warn("%s: Duplicated entry '%s' found. Please make sure every entry exists once.", ENGINE_CONFIG, name.c_str());
         continue;
       }
 
-      string value = CFileSystem::RemoveWhitespace(arrLine[1]);
-      value = CFileSystem::RemoveCharacter(value, '"'); // Remove " character in strings
+      string value = StringUtils::RemoveWhitespace(arrLine[1]);
+      value = StringUtils::RemoveCharacter(value, '"'); // Remove " character in strings
       m_iniMap[name] = value;
     }
 
@@ -58,11 +59,11 @@ CConsole::CConsole()
 ////////////////////////////////////////////////////////////////////
 void CConsole::Log(const char* format, ...)
 {
-  SetColor(Color::WHITE, Color::BLACK);
+  SetColor(Color::TURQUOISE, Color::BLACK);
   va_list args;
   va_start(args, format);
   char buffer[BUFFER_SIZE];
-  int pos = snprintf(buffer, BUFFER_SIZE, "%s", "[LOG] ");
+  int pos = snprintf(buffer, BUFFER_SIZE, "%s", "[INFO] ");
   int length = vsnprintf(buffer + pos, BUFFER_SIZE, format, args);
   assert(length >= 0 && length < BUFFER_SIZE);
   va_end(args);
@@ -98,8 +99,9 @@ void CConsole::Error(const char* format, ...)
 }
 
 ////////////////////////////////////////////////////////////////////
-void CConsole::RegisterCVar(const string& name, int64* pVar, int64 nDefaultValue, const string& tooltip)
+void CConsole::RegisterCVar(const string& input, int64* pVar, int64 nDefaultValue, const string& tooltip)
 {
+  string name = StringUtils::ToLower(input);
   auto it = m_cvars.find(name);
   if (it != m_cvars.end())
   {
@@ -127,8 +129,9 @@ void CConsole::RegisterCVar(const string& name, int64* pVar, int64 nDefaultValue
 }
 
 ////////////////////////////////////////////////////////////////////
-void CConsole::RegisterCVar(const string& name, string* pVar, const string& defaultString, const string& tooltip)
+void CConsole::RegisterCVar(const string& input, string* pVar, const string& defaultString, const string& tooltip)
 {
+  string name = StringUtils::ToLower(input);
   auto it = m_cvars.find(name);
   if (it != m_cvars.end())
   {
@@ -144,8 +147,9 @@ void CConsole::RegisterCVar(const string& name, string* pVar, const string& defa
 }
 
 ////////////////////////////////////////////////////////////////////
-CVar* CConsole::GetCVar(const string& name)
+CVar* CConsole::GetCVar(const string& input)
 {
+  string name = StringUtils::ToLower(input);
   auto it = m_cvars.find(name);
   if (it != m_cvars.end())
     return &it->second;

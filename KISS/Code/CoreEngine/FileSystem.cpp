@@ -3,7 +3,6 @@
 #include "FileSystem.h"
 
 #include <fstream>
-#include <sstream>
 
 ////////////////////////////////////////////////////////////////////
 CFileSystem::CFileSystem()
@@ -35,31 +34,4 @@ CFile CFileSystem::ReadFile(const string& fileName)
   file.close();
 
   return CFile{ std::move(content) };
-}
-
-////////////////////////////////////////////////////////////////////
-std::vector<string> CFileSystem::SplitString(const string& input, char delim)
-{
-  std::vector<std::string> result;
-  std::istringstream iss(input);
-
-  std::string token;
-  while (std::getline(iss, token, delim))
-    result.push_back(token);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////
-string CFileSystem::RemoveWhitespace(string result)
-{
-  result.erase(std::remove_if(result.begin(), result.end(), ::isspace), result.end());
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////
-string CFileSystem::RemoveCharacter(string input, char c)
-{
-  input.erase(std::remove(input.begin(), input.end(), c), input.end());
-  return input;
 }

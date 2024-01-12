@@ -25,10 +25,6 @@ public:
 
   CFile ReadFile(const string& fileName);
 
-  static std::vector<string> SplitString(const string& str, char delim);
-  static string RemoveWhitespace(string str);
-  static string RemoveCharacter(string str, char c);
-
   static CFileSystem& Instance();
 
 private:

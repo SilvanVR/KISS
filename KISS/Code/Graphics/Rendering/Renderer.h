@@ -6,9 +6,10 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#include <SDKs/Volk/volk.h>
 #define GLFW_INCLUDE_VULKAN
 #include <glfw/glfw3.h>
+
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 
 namespace Graphics
@@ -19,7 +20,7 @@ namespace Graphics
   public:
     ~CRenderer() { DeinitRenderer(); }
 
-    bool InitRenderer();
+    void InitRenderer();
     void DeinitRenderer();
 
     //////////////////////////
@@ -41,9 +42,11 @@ namespace Graphics
     GLFWwindow* m_pWindow;
 
     // Vulkan related members
-    vk::Instance m_vkInstance;
+    vk::Instance       m_vkInstance;
+    vk::PhysicalDevice m_vkPhysicalDevice; 
+    vk::Device         m_vkDevice;
 
     void _RegisterCVars();
-    void _CreateVulkanInstance();
+    void _InitVulkan();
   };
 };

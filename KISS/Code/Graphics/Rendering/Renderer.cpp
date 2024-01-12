@@ -24,12 +24,7 @@ namespace Graphics
   {
     LOG("Initializing Renderer...");
     CRenderer* pRenderer = new CRenderer;
-    bool bSuccess = pRenderer->InitRenderer();
-    if (!bSuccess)
-    {
-      LOG_ERROR("Failed to create renderer");
-      return nullptr;
-    }
+    pRenderer->InitRenderer();
     return pRenderer;
   }
 
@@ -76,48 +71,31 @@ namespace Graphics
   }
 
   ////////////////////////////////////////////////////////////////////
-  bool CRenderer::InitRenderer()
+  void CRenderer::InitRenderer()
   {
     _RegisterCVars();
 
-    if (!glfwInit())
-    {
-      LOG_ERROR("Failed to initialize glfw");
-      return false;
-    }
+    m_bVSync = bool(CV_r_vsync);
+
+    bool bSuccess = glfwInit();
+    KISS_FATAL_COND(!bSuccess, "Failed to initialize glfw");
 
     glfwSetErrorCallback(GLFWErrorCallback); 
 
     int nVal = glfwVulkanSupported();
     assert(glfwVulkanSupported() == GLFW_TRUE);
 
-    VkResult result = volkInitialize();
-    if (result != VK_SUCCESS)
-    {
-      LOG_ERROR("Failed to initialize Volk. Please install the vulkan loader.");
-      assert(false);
-      return false;
-    }
+    _InitVulkan();
 
-    _CreateVulkanInstance();
-    volkLoadInstance(m_vkInstance);
-
-    m_bVSync = bool(CV_r_vsync);
     glfwWindowHint(GLFW_DOUBLEBUFFER, m_bVSync ? GLFW_TRUE : GLFW_FALSE);
 
     CVar* pAppName = CConsole::Instance().GetCVar("appName");
     m_pWindow = glfwCreateWindow((int)CV_r_width, (int)CV_r_height, pAppName->GetString().c_str(), NULL, NULL);
-    if (!m_pWindow)
-    {
-      LOG_ERROR("Failed to create Window");
-      return false;
-    }
+    KISS_FATAL_COND(m_pWindow, "Failed to create Window");
 
     // Borderless fullscreen
     //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     //glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-
-    return true;
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -129,38 +107,71 @@ namespace Graphics
   }
 
   ////////////////////////////////////////////////////////////////////
-  void CRenderer::_CreateVulkanInstance()
+  void CRenderer::_InitVulkan()
   {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
     try
     {
-      CVar* pAppName    = CConsole::Instance().GetCVar("appName");
-      CVar* pEngineName = CConsole::Instance().GetCVar("engineName");
-      vk::ApplicationInfo applicationInfo(
-        pAppName    ? pAppName->GetString().c_str()     : "NoName", 1, 
-        pEngineName ? pEngineName->GetString().c_str() : "NoEngineName", 
-        1, VK_API_VERSION_1_3
-      );
+      // Instance
+      {
+        CVar* pAppName    = CConsole::Instance().GetCVar("appName");
+        CVar* pEngineName = CConsole::Instance().GetCVar("engineName");
+        vk::ApplicationInfo applicationInfo(
+          pAppName    ? pAppName->GetString().c_str()     : "NoName", 1, 
+          pEngineName ? pEngineName->GetString().c_str() : "NoEngineName", 
+          1, VK_API_VERSION_1_3
+        );
 
-      const char* arrExtensions[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-#ifdef _WIN32
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-#endif
-      };
-      vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, {}, arrExtensions);
-      m_vkInstance = vk::createInstance(instanceCreateInfo);
+        const char* arrExtensions[] = {
+          VK_KHR_SURFACE_EXTENSION_NAME,
+  #ifdef _WIN32
+          VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+  #endif
+        };
+        vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, {}, arrExtensions);
+        m_vkInstance = vk::createInstance(instanceCreateInfo);
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkInstance);
+      }
+
+      // Physical Device
+      {
+        std::vector<vk::PhysicalDevice> physicalDevices = m_vkInstance.enumeratePhysicalDevices();
+        for (uint32 i = 0; i < physicalDevices.size(); i++)
+        {
+          const vk::PhysicalDevice& physicalDevice = physicalDevices[i];
+          vk::PhysicalDeviceProperties props = physicalDevice.getProperties();
+          LOG("[%u] GPU found: %s", i, props.deviceName);
+        }
+
+        KISS_FATAL_COND(physicalDevices.empty(), "No GPU found on your system. Please PLUG IN A FUCKING GPU!!!111!!");
+
+        m_vkPhysicalDevice = physicalDevices.front();
+        LOG("Using GPU: %s", m_vkPhysicalDevice.getProperties().deviceName);
+      }
+
+      // Logical Device
+      {
+        std::vector<vk::QueueFamilyProperties> queueFamilyProperties = m_vkPhysicalDevice.getQueueFamilyProperties();
+
+        auto propertyIterator = std::find_if(queueFamilyProperties.begin(), queueFamilyProperties.end(),
+          [](vk::QueueFamilyProperties const& qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+        size_t graphicsQueueFamilyIndex = std::distance(queueFamilyProperties.begin(), propertyIterator);
+        assert(graphicsQueueFamilyIndex < queueFamilyProperties.size());
+
+        float queuePriority = 0.0f;
+        vk::DeviceQueueCreateInfo deviceQueueCreateInfo(vk::DeviceQueueCreateFlags(), static_cast<uint32_t>(graphicsQueueFamilyIndex), 1, &queuePriority);
+        m_vkDevice = m_vkPhysicalDevice.createDevice(vk::DeviceCreateInfo(vk::DeviceCreateFlags(), deviceQueueCreateInfo));
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkDevice);
+      }
     }
     catch (vk::SystemError& err)
     {
-      LOG_ERROR("vk::SystemError: %s ", err.what());
-      exit(-1);
+      KISS_FATAL("vk::SystemError: %s ", err.what());
     }
     catch (std::exception& err)
     {
-      LOG_ERROR("std::exception: %s ", err.what());
-      exit(-1);
+      KISS_FATAL("std::exception: %s ", err.what());
     }
   }
 

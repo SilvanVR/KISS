@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/Color.h"
+#include <Common/Color.h>
 
 ////////////////////////////////////////////////////////////////////
 class CVar
@@ -60,5 +60,14 @@ private:
 #define LOG(format, ...)       CConsole::Instance().Log(format, ##__VA_ARGS__)
 #define LOG_WARN(format, ...)  CConsole::Instance().Warn(format, ##__VA_ARGS__)
 #define LOG_ERROR(format, ...) CConsole::Instance().Error(format, ##__VA_ARGS__)
+
+#define KISS_FATAL(format, ...) \
+CConsole::Instance().Error(format, ##__VA_ARGS__);\
+exit(1);
+
+#define KISS_FATAL_COND(cond, format, ...) \
+ if (cond){\
+ CConsole::Instance().Error(format, ##__VA_ARGS__); \
+ exit(1);}
 
 #define REGISTER_CVAR(var, name, value, tooltip) CConsole::Instance().RegisterCVar(var, name, value, tooltip);
