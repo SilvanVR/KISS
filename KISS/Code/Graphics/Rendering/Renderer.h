@@ -11,6 +11,8 @@
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
+#undef max
+#undef min
 
 namespace Graphics
 {
@@ -36,7 +38,9 @@ namespace Graphics
     static int64 CV_r_vsync;
 
   private:
-    bool m_bVSync = true;
+    bool     m_bVSync = true;
+    uint32_t m_width  = 0;
+    uint32_t m_height = 0;
 
     // GLFW
     GLFWwindow* m_pWindow;
@@ -46,9 +50,18 @@ namespace Graphics
     vk::PhysicalDevice m_vkPhysicalDevice; 
     vk::Device         m_vkDevice;
     vk::SurfaceKHR     m_vkSurface;
+    vk::SwapchainKHR   m_vkSwapChain;
+
+    uint32_t   m_graphicsQueueFamilyIndex = 0;
+    uint32_t   m_presentQueueFamilyIndex  = 0;
+    vk::Format m_vkSwapchainFormat        = vk::Format::eUndefined;
+
+    std::vector<vk::ImageView> m_swapchainImageViews;
 
     void _RegisterCVars();
     void _InitVulkan();
     void _CreateWindow();
+    void _CreateSwapchain();
+    void _CreateSwapchainImages();
   };
 };

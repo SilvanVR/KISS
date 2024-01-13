@@ -8,6 +8,8 @@
 #include <array>
 #include <utility>
 
+#include "Utils/Utils.h"
+
 using byte = uint8_t;
 
 using int32 = int32_t;
