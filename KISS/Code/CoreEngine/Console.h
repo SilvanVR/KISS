@@ -73,7 +73,7 @@ CConsole::Instance().Error(format, ##__VA_ARGS__);\
 exit(1);
 
 #define KISS_FATAL_COND(cond, format, ...) \
- if (!cond){\
+ if (!(cond)){\
  CConsole::Instance().Error(format, ##__VA_ARGS__); \
  exit(1);}
 

@@ -7,10 +7,10 @@
 #endif
 
 #define GLFW_INCLUDE_VULKAN
-#include <glfw/glfw3.h>
+#include <SDKs/glfw/glfw3.h>
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#include <vulkan/vulkan.hpp>
+#include <SDKs/vulkan/vulkan.hpp>
 #undef max
 #undef min
 
@@ -38,9 +38,9 @@ namespace Graphics
     static int64 CV_r_vsync;
 
   private:
-    bool     m_bVSync = true;
-    uint32_t m_width  = 0;
-    uint32_t m_height = 0;
+    bool   m_bVSync = true;
+    uint32 m_width  = 0;
+    uint32 m_height = 0;
 
     // GLFW
     GLFWwindow* m_pWindow;
@@ -51,12 +51,19 @@ namespace Graphics
     vk::Device         m_vkDevice;
     vk::SurfaceKHR     m_vkSurface;
     vk::SwapchainKHR   m_vkSwapChain;
+    vk::CommandPool    m_vkCommandPool;
+    vk::CommandBuffer  m_vkPerFrameCmd;
+    vk::Queue          m_vkGraphicsQueue;
+    vk::Queue          m_vkPresentQueue;
 
-    uint32_t   m_graphicsQueueFamilyIndex = 0;
-    uint32_t   m_presentQueueFamilyIndex  = 0;
-    vk::Format m_vkSwapchainFormat        = vk::Format::eUndefined;
+    uint32 m_nCurrentSwapchainBuffer  = 0;
+    uint32 m_graphicsQueueFamilyIndex = 0;
+    uint32 m_presentQueueFamilyIndex  = 0;
 
-    std::vector<vk::ImageView> m_swapchainImageViews;
+    vk::Format                   m_swapchainFormat = vk::Format::eUndefined;
+    std::vector<vk::Image>       m_swapchainImages;
+    std::vector<vk::ImageView>   m_swapchainImageViews;
+    std::vector<vk::Framebuffer> m_framebuffers;
 
     void _RegisterCVars();
     void _InitVulkan();

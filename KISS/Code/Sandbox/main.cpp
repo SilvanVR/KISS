@@ -26,10 +26,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
     pRenderer->EndFrame();
   }
 
+  // Change chanel points rewards
 
+  // !discord - twitch bot commands
 
-
-  // Add vulkan validation output to logfile (debug callback needs to call into console)
+  // Add vulkan validation output to logfile (debug callback needs to call into console) (when we have our first error)
 
   // Vulkan (Colored Triangle)
 
