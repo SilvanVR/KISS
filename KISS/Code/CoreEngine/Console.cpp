@@ -12,7 +12,7 @@
   #include <Windows.h>
 #endif
 
-#define BUFFER_SIZE   512
+#define BUFFER_SIZE   2048
 
 #define ENGINE_CONFIG "engine.ini"
 #define ENGINE_LOG    "engine.log"

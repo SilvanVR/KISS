@@ -26,13 +26,13 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
     pRenderer->EndFrame();
   }
 
-  // Change chanel points rewards
+  // Resizing (recreation of swapchain)
 
-  // !discord - twitch bot commands
+  // Restructuring
 
-  // Add vulkan validation output to logfile (debug callback needs to call into console) (when we have our first error)
+  // Shaders (Colored Triangle)
 
-  // Vulkan (Colored Triangle)
+  // Vulkan 
 
   // Inengine renderdoc (Press a button to do a capture)
 

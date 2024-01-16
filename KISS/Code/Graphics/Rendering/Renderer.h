@@ -36,6 +36,7 @@ namespace Graphics
     static int64 CV_r_width;
     static int64 CV_r_height;
     static int64 CV_r_vsync;
+    static int64 CV_r_vulkanValidation;
 
   private:
     bool   m_bVSync = true;
@@ -52,11 +53,17 @@ namespace Graphics
     vk::SurfaceKHR     m_vkSurface;
     vk::SwapchainKHR   m_vkSwapChain;
     vk::CommandPool    m_vkCommandPool;
-    vk::CommandBuffer  m_vkPerFrameCmd;
     vk::Queue          m_vkGraphicsQueue;
     vk::Queue          m_vkPresentQueue;
+    std::vector<vk::CommandBuffer> m_vkPerFrameCmd;
+    std::vector<vk::Fence>         m_vkPerFrameFence;
 
-    uint32 m_nCurrentSwapchainBuffer  = 0;
+    vk::Semaphore m_imageAcquiredSemaphore;
+    vk::Semaphore m_renderCompletedSemaphore;
+
+    vk::DebugUtilsMessengerEXT m_debugUtilsMessenger;
+
+    uint32 m_nCurSwapchainIdx = 0;
     uint32 m_graphicsQueueFamilyIndex = 0;
     uint32 m_presentQueueFamilyIndex  = 0;
 

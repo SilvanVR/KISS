@@ -9,8 +9,9 @@ namespace VkUtils
     vk::AccessFlags sourceAccessMask;
     switch (oldImageLayout)
     {
-    case vk::ImageLayout::eTransferDstOptimal: sourceAccessMask = vk::AccessFlagBits::eTransferWrite; break;
-    case vk::ImageLayout::ePreinitialized: sourceAccessMask = vk::AccessFlagBits::eHostWrite; break;
+    case vk::ImageLayout::eColorAttachmentOptimal: sourceAccessMask = vk::AccessFlagBits::eColorAttachmentWrite; break;
+    case vk::ImageLayout::eTransferDstOptimal:     sourceAccessMask = vk::AccessFlagBits::eTransferWrite; break;
+    case vk::ImageLayout::ePreinitialized:         sourceAccessMask = vk::AccessFlagBits::eHostWrite; break;
     case vk::ImageLayout::eGeneral:  // sourceAccessMask is empty
     case vk::ImageLayout::eUndefined: break;
     default: assert(false); break;
@@ -20,9 +21,10 @@ namespace VkUtils
     switch (oldImageLayout)
     {
     case vk::ImageLayout::eGeneral:
-    case vk::ImageLayout::ePreinitialized: sourceStage = vk::PipelineStageFlagBits::eHost; break;
-    case vk::ImageLayout::eTransferDstOptimal: sourceStage = vk::PipelineStageFlagBits::eTransfer; break;
-    case vk::ImageLayout::eUndefined: sourceStage = vk::PipelineStageFlagBits::eTopOfPipe; break;
+    case vk::ImageLayout::ePreinitialized:         sourceStage = vk::PipelineStageFlagBits::eHost; break;
+    case vk::ImageLayout::eTransferDstOptimal:     sourceStage = vk::PipelineStageFlagBits::eTransfer; break;
+    case vk::ImageLayout::eColorAttachmentOptimal: sourceStage = vk::PipelineStageFlagBits::eColorAttachmentOutput; break;
+    case vk::ImageLayout::eUndefined:              sourceStage = vk::PipelineStageFlagBits::eTopOfPipe; break;
     default: assert(false); break;
     }
 
@@ -33,7 +35,7 @@ namespace VkUtils
     case vk::ImageLayout::eDepthStencilAttachmentOptimal:
       destinationAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
       break;
-    case vk::ImageLayout::eGeneral:  // empty destinationAccessMask
+    case vk::ImageLayout::eGeneral: // empty destinationAccessMask
     case vk::ImageLayout::ePresentSrcKHR: break;
     case vk::ImageLayout::eShaderReadOnlyOptimal: destinationAccessMask = vk::AccessFlagBits::eShaderRead; break;
     case vk::ImageLayout::eTransferSrcOptimal: destinationAccessMask = vk::AccessFlagBits::eTransferRead; break;

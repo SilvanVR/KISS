@@ -28,7 +28,6 @@ project "Sandbox"
 	links 
 	{
 		"Common",
-		"SDKs",
 		"Graphics",
 		"CoreEngine"
 	}

@@ -6,14 +6,17 @@
 
 #include <SDKs/vulkan/vulkan_extension_inspection.hpp>
 
+#include <sstream>
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace Graphics
 {
   ////////////////////////////////////////////////////////////////////
-  int64 CRenderer::CV_r_width  = 0;
-  int64 CRenderer::CV_r_height = 0;
-  int64 CRenderer::CV_r_vsync  = 0;
+  int64 CRenderer::CV_r_width            = 0;
+  int64 CRenderer::CV_r_height           = 0;
+  int64 CRenderer::CV_r_vsync            = 0;
+  int64 CRenderer::CV_r_vulkanValidation = 0;
 
   ////////////////////////////////////////////////////////////////////
   void GLFWErrorCallback(int code, const char* description)
@@ -28,6 +31,61 @@ namespace Graphics
     CRenderer* pRenderer = new CRenderer;
     pRenderer->InitRenderer();
     return pRenderer;
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  VKAPI_ATTR VkBool32 VKAPI_CALL debugMessageFunc(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+    VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData,
+    void* /*pUserData*/)
+  {
+    std::stringstream message;
+
+    vk::DebugUtilsMessageSeverityFlagBitsEXT eVerbosity = static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity);
+    message << vk::to_string(eVerbosity) << ": " << vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageTypes)) << ":\n";
+    message << std::string("\t") << "messageIDName   = <" << pCallbackData->pMessageIdName << ">\n";
+    message << std::string("\t") << "messageIdNumber = " << pCallbackData->messageIdNumber << "\n";
+    message << std::string("\t") << "message         = <" << pCallbackData->pMessage << ">\n";
+    if (0 < pCallbackData->queueLabelCount)
+    {
+      message << std::string("\t") << "Queue Labels:\n";
+      for (uint32_t i = 0; i < pCallbackData->queueLabelCount; i++)
+      {
+        message << std::string("\t\t") << "labelName = <" << pCallbackData->pQueueLabels[i].pLabelName << ">\n";
+      }
+    }
+    if (0 < pCallbackData->cmdBufLabelCount)
+    {
+      message << std::string("\t") << "CommandBuffer Labels:\n";
+      for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; i++)
+      {
+        message << std::string("\t\t") << "labelName = <" << pCallbackData->pCmdBufLabels[i].pLabelName << ">\n";
+      }
+    }
+    if (0 < pCallbackData->objectCount)
+    {
+      message << std::string("\t") << "Objects:\n";
+      for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
+      {
+        message << std::string("\t\t") << "Object " << i << "\n";
+        message << std::string("\t\t\t") << "objectType   = " << vk::to_string(static_cast<vk::ObjectType>(pCallbackData->pObjects[i].objectType)) << "\n";
+        message << std::string("\t\t\t") << "objectHandle = " << pCallbackData->pObjects[i].objectHandle << "\n";
+        if (pCallbackData->pObjects[i].pObjectName)
+        {
+          message << std::string("\t\t\t") << "objectName   = <" << pCallbackData->pObjects[i].pObjectName << ">\n";
+        }
+      }
+    }
+
+    switch (eVerbosity)
+    {
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:    KISS_LOG(message.str().c_str()); break;
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose: KISS_LOG(message.str().c_str()); break;
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning: KISS_LOG_WARN(message.str().c_str()); break;
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:   KISS_LOG_ERROR(message.str().c_str()); break;
+    }
+
+    return false;
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -64,32 +122,34 @@ namespace Graphics
       // TODO: Recreate swapchain
     }
 
-    vk::Semaphore imageAcquiredSemaphore = m_vkDevice.createSemaphore(vk::SemaphoreCreateInfo());
     vk::ResultValue<uint32_t> nexImage =
-      m_vkDevice.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR(m_vkSwapChain, UINT64_MAX, imageAcquiredSemaphore, {}, 1));
+      m_vkDevice.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR(m_vkSwapChain, UINT64_MAX, m_imageAcquiredSemaphore, {}, 1));
     assert(nexImage.result == vk::Result::eSuccess);
-    m_nCurrentSwapchainBuffer = nexImage.value;
+    m_nCurSwapchainIdx = nexImage.value;
 
-    m_vkPerFrameCmd.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)));
+    while (vk::Result::eTimeout == m_vkDevice.waitForFences(m_vkPerFrameFence[m_nCurSwapchainIdx], VK_TRUE, UINT64_MAX));
+    m_vkDevice.resetFences(m_vkPerFrameFence[m_nCurSwapchainIdx]);
+
+    m_vkPerFrameCmd[m_nCurSwapchainIdx].begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)));
     
-    VkUtils::SetImageLayout(m_vkPerFrameCmd, m_swapchainImages[m_nCurrentSwapchainBuffer], m_swapchainFormat,
+    VkUtils::SetImageLayout(m_vkPerFrameCmd[m_nCurSwapchainIdx], m_swapchainImages[m_nCurSwapchainIdx], m_swapchainFormat,
       vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
-    vk::ClearColorValue clearValue = vk::ClearColorValue(0.2f, 0.2f, 0.2f, 0.2f);
-    m_vkPerFrameCmd.clearColorImage(
-      m_swapchainImages[m_nCurrentSwapchainBuffer], 
-      vk::ImageLayout::eColorAttachmentOptimal, 
-      clearValue,
-      vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
+    //vk::ClearColorValue clearValue = vk::ClearColorValue(0.2f, 0.2f, 0.2f, 0.2f);
+    //m_vkPerFrameCmd[m_nCurSwapchainIdx]..clearColorImage(
+    //  m_swapchainImages[m_nCurSwapchainIdx], 
+    //  vk::ImageLayout::eColorAttachmentOptimal, 
+    //  clearValue,
+    //  vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
 
-    VkUtils::SetImageLayout(m_vkPerFrameCmd, m_swapchainImages[m_nCurrentSwapchainBuffer], m_swapchainFormat,
+    VkUtils::SetImageLayout(m_vkPerFrameCmd[m_nCurSwapchainIdx], m_swapchainImages[m_nCurSwapchainIdx], m_swapchainFormat,
       vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
 
-    m_vkPerFrameCmd.end();
+    m_vkPerFrameCmd[m_nCurSwapchainIdx].end();
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-    vk::SubmitInfo         submitInfo(imageAcquiredSemaphore, waitDestinationStageMask, m_vkPerFrameCmd);
-    m_vkGraphicsQueue.submit(submitInfo);
+    vk::SubmitInfo         submitInfo(m_imageAcquiredSemaphore, waitDestinationStageMask, m_vkPerFrameCmd[m_nCurSwapchainIdx], m_renderCompletedSemaphore);
+    m_vkGraphicsQueue.submit(submitInfo, m_vkPerFrameFence[m_nCurSwapchainIdx]);
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -97,7 +157,7 @@ namespace Graphics
   {
     try
     {
-      vk::Result result = m_vkPresentQueue.presentKHR(vk::PresentInfoKHR({}, m_vkSwapChain, m_nCurrentSwapchainBuffer));
+      vk::Result result = m_vkPresentQueue.presentKHR(vk::PresentInfoKHR(m_renderCompletedSemaphore, m_vkSwapChain, m_nCurSwapchainIdx));
       switch (result)
       {
       case vk::Result::eSuccess: break;
@@ -144,9 +204,15 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void CRenderer::_RegisterCVars()
   {
-    REGISTER_CVAR("r.width",  &CV_r_width, 1280, "Width of the rendering window");
-    REGISTER_CVAR("r.height", &CV_r_height, 720, "Height of the rendering window");
-    REGISTER_CVAR("r.vsync",  &CV_r_vsync,    1, "Toggles vsync of the rendering");
+    REGISTER_CVAR("r.width",             &CV_r_width,           1280, "Width of the rendering window");
+    REGISTER_CVAR("r.height",            &CV_r_height,           720, "Height of the rendering window");
+    REGISTER_CVAR("r.vsync",             &CV_r_vsync,              1, "Toggles vsync of the rendering");
+    REGISTER_CVAR("r.vulkan.validation", &CV_r_vulkanValidation,   0, 
+      "0: Validation off\n"
+      "1: Info+Warnings+Errors\n"
+      "2: Warnings+Errors\n"
+      "3: Errors\n"
+    );
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -177,16 +243,32 @@ namespace Graphics
         );
         
         std::vector<char const*> arrLayers;
-        // arrLayers.push_back( "VK_LAYER_KHRONOS_validation" );
-        std::vector<char const*> arrExtensions = {
-          VK_KHR_SURFACE_EXTENSION_NAME,
+        if (CV_r_vulkanValidation)
+          arrLayers.push_back("VK_LAYER_KHRONOS_validation");
+        std::vector<char const*> arrExtensions;
+        arrExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+        if (CV_r_vulkanValidation)
+          arrExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   #ifdef _WIN32
-          VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+        arrExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
   #endif
-        };
         vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, arrLayers, arrExtensions);
         m_vkInstance = vk::createInstance(instanceCreateInfo);
         VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkInstance);
+
+        if (CV_r_vulkanValidation)
+        {
+          vk::DebugUtilsMessageSeverityFlagsEXT severityFlags = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
+          //severityFlags |= vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
+          if (CV_r_vulkanValidation <= 2) severityFlags |= vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning;
+          if (CV_r_vulkanValidation <= 1) severityFlags |= vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo;
+          vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | 
+            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+          m_debugUtilsMessenger = m_vkInstance.createDebugUtilsMessengerEXT(
+            vk::DebugUtilsMessengerCreateInfoEXT({}, severityFlags, messageTypeFlags, &debugMessageFunc));
+        }
       }
 
       // Physical Device
@@ -252,14 +334,25 @@ namespace Graphics
         m_vkPresentQueue  = m_vkDevice.getQueue(m_presentQueueFamilyIndex, 0);
       }
 
-      // Command buffer
-      {
-        m_vkCommandPool = m_vkDevice.createCommandPool(vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT), m_graphicsQueueFamilyIndex));
-        m_vkPerFrameCmd = m_vkDevice.allocateCommandBuffers(vk::CommandBufferAllocateInfo(m_vkCommandPool, vk::CommandBufferLevel::ePrimary, 1)).front();
-      }
-
       _CreateSwapchain();
       _CreateSwapchainImages();
+
+      // Command buffer
+      {
+        assert(m_swapchainImages.size());
+        m_vkCommandPool = m_vkDevice.createCommandPool(vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlags(
+          VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT), m_graphicsQueueFamilyIndex));
+        m_vkPerFrameCmd = m_vkDevice.allocateCommandBuffers(vk::CommandBufferAllocateInfo(m_vkCommandPool, vk::CommandBufferLevel::ePrimary, (uint32)m_swapchainImages.size()));
+
+        for (size_t i = 0; i < m_swapchainImages.size(); i++)
+          m_vkPerFrameFence.push_back(m_vkDevice.createFence(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled)));
+      }
+
+      // Semaphores
+      {
+        m_imageAcquiredSemaphore   = m_vkDevice.createSemaphore(vk::SemaphoreCreateInfo());
+        m_renderCompletedSemaphore = m_vkDevice.createSemaphore(vk::SemaphoreCreateInfo());
+      }
     }
     catch (vk::SystemError& err)
     {
@@ -294,21 +387,9 @@ namespace Graphics
     }
 
     // The FIFO present mode is guaranteed by the spec to be supported
-    vk::PresentModeKHR swapchainPresentMode = vk::PresentModeKHR::eFifo;
+    vk::PresentModeKHR swapchainPresentMode = CV_r_vsync ? vk::PresentModeKHR::eFifo : vk::PresentModeKHR::eImmediate;
     const std::vector<vk::PresentModeKHR>& presentModes = m_vkPhysicalDevice.getSurfacePresentModesKHR(m_vkSurface);
-    for (const auto& presentMode : presentModes)
-    {
-      if (!CV_r_vsync && presentMode == vk::PresentModeKHR::eImmediate)
-      {
-        swapchainPresentMode = presentMode;
-        break;
-      }
-      else if (presentMode == vk::PresentModeKHR::eMailbox)
-      {
-        swapchainPresentMode = presentMode;
-        break;
-      }
-    }
+    // vk::PresentModeKHR::eMailbox
 
     vk::SurfaceTransformFlagBitsKHR preTransform = (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
       ? vk::SurfaceTransformFlagBitsKHR::eIdentity : surfaceCapabilities.currentTransform;
@@ -369,6 +450,7 @@ namespace Graphics
     m_vkInstance.destroySurfaceKHR(m_vkSurface);
     glfwDestroyWindow(m_pWindow);
     glfwTerminate();
+    m_vkInstance.destroyDebugUtilsMessengerEXT(m_debugUtilsMessenger);
     m_vkInstance.destroy();
   }
 
