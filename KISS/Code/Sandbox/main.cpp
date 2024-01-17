@@ -26,13 +26,15 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
     pRenderer->EndFrame();
   }
 
-  // Resizing (recreation of swapchain)
-
   // Restructuring
+
+  // Input manager
 
   // Shaders (Colored Triangle)
 
   // Vulkan 
+
+  // Optik Profiler
 
   // Inengine renderdoc (Press a button to do a capture)
 

@@ -16,6 +16,9 @@
 
 namespace Graphics
 {
+  class CRenderer;
+  static CRenderer* g_pRenderer = nullptr;
+
   ////////////////////////////////////////////////////////////////////
   class CRenderer : public IRenderer
   {
@@ -24,6 +27,8 @@ namespace Graphics
 
     void InitRenderer();
     void DeinitRenderer();
+
+    void OnWindowSizeChanged(int nWidth, int nHeight);
 
     //////////////////////////
     // IRenderer Interface
@@ -40,11 +45,11 @@ namespace Graphics
 
   private:
     bool   m_bVSync = true;
-    uint32 m_width  = 0;
-    uint32 m_height = 0;
+    uint32 m_nWidth  = 0;
+    uint32 m_nHeight = 0;
 
     // GLFW
-    GLFWwindow* m_pWindow;
+    GLFWwindow* m_pWindow = nullptr;
 
     // Vulkan related members
     vk::Instance       m_vkInstance;

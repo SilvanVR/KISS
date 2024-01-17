@@ -23,14 +23,30 @@ namespace Graphics
   {
     KISS_LOG_ERROR("GLFW Error %d: %s", code, description);
   }
+  
+  ////////////////////////////////////////////////////////////////////
+  void FramebufferSizeCallback(GLFWwindow* window, int width, int height) 
+  {
+    g_pRenderer->OnWindowSizeChanged(width, height);
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+      glfwSetWindowShouldClose(window, GLFW_TRUE); // Close the window when Escape is pressed
+    }
+    else {
+      std::cout << "Key: " << key << " Action: " << action << std::endl;
+    }
+  }
 
   ////////////////////////////////////////////////////////////////////
   IRenderer* CreateRenderer()
   {
     KISS_LOG_ALWAYS("Initializing Renderer...");
-    CRenderer* pRenderer = new CRenderer;
-    pRenderer->InitRenderer();
-    return pRenderer;
+    g_pRenderer = new CRenderer;
+    g_pRenderer->InitRenderer();
+    return g_pRenderer;
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -89,6 +105,22 @@ namespace Graphics
   }
 
   ////////////////////////////////////////////////////////////////////
+  void CRenderer::OnWindowSizeChanged(int nWidth, int nHeight)
+  {
+    m_bVSync    = CV_r_vsync;
+    m_nWidth    = nWidth;
+    m_nHeight   = nHeight;
+    CV_r_width  = int64(nWidth);
+    CV_r_height = int64(nHeight);
+    if (nWidth && nHeight)
+    {
+      _CreateSwapchain();
+      _CreateSwapchainImages();
+      KISS_LOG("Window resized. New width/height: %d, %d", nWidth, nHeight);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////
   bool CRenderer::ShouldClose()
   {
     return glfwWindowShouldClose(m_pWindow);
@@ -116,11 +148,13 @@ namespace Graphics
       glfwSetWindowTitle(m_pWindow, buf);
     }
 
-    if (bool(CV_r_vsync) != m_bVSync)
-    {
-      m_bVSync = CV_r_vsync;
-      // TODO: Recreate swapchain
-    }
+    glfwPollEvents();
+
+    if (bool(CV_r_vsync) != m_bVSync || m_nWidth != CV_r_width || m_nHeight != CV_r_height)
+      OnWindowSizeChanged(int(CV_r_width), int(CV_r_height));
+
+    if (m_nWidth == 0 || m_nHeight == 0)
+      return;
 
     vk::ResultValue<uint32_t> nexImage =
       m_vkDevice.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR(m_vkSwapChain, UINT64_MAX, m_imageAcquiredSemaphore, {}, 1));
@@ -155,6 +189,9 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void CRenderer::EndFrame()
   {
+    if (m_nWidth == 0 || m_nHeight == 0)
+      return;
+
     try
     {
       vk::Result result = m_vkPresentQueue.presentKHR(vk::PresentInfoKHR(m_renderCompletedSemaphore, m_vkSwapChain, m_nCurSwapchainIdx));
@@ -173,8 +210,6 @@ namespace Graphics
     {
       KISS_FATAL("std::exception: %s ", err.what());
     }
-
-    glfwPollEvents();
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -183,8 +218,8 @@ namespace Graphics
     _RegisterCVars();
 
     m_bVSync = bool(CV_r_vsync);
-    m_width  = uint32(CV_r_width);
-    m_height = uint32(CV_r_height);
+    m_nWidth  = uint32(CV_r_width);
+    m_nHeight = uint32(CV_r_height);
 
     bool bSuccess = glfwInit();
     KISS_FATAL_COND(bSuccess, "Failed to initialize glfw");
@@ -219,10 +254,11 @@ namespace Graphics
   void CRenderer::_CreateWindow()
   {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_DOUBLEBUFFER, m_bVSync ? GLFW_TRUE : GLFW_FALSE);
     CVar* pAppName = CConsole::Instance().GetCVar("appName");
     m_pWindow = glfwCreateWindow((int)CV_r_width, (int)CV_r_height, pAppName->GetString().c_str(), NULL, NULL);
     KISS_FATAL_COND(m_pWindow, "Failed to create Window");
+    glfwSetFramebufferSizeCallback(m_pWindow, FramebufferSizeCallback);
+    glfwSetKeyCallback(m_pWindow, KeyCallback);
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -377,8 +413,8 @@ namespace Graphics
     if (surfaceCapabilities.currentExtent.width == std::numeric_limits<uint32_t>::max())
     {
       // If the surface size is undefined, the size is set to the size of the images requested.
-      swapchainExtent.width  = Utils::Clamp(m_width,  surfaceCapabilities.minImageExtent.width,  surfaceCapabilities.maxImageExtent.width);
-      swapchainExtent.height = Utils::Clamp(m_height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+      swapchainExtent.width  = Utils::Clamp(m_nWidth,  surfaceCapabilities.minImageExtent.width,  surfaceCapabilities.maxImageExtent.width);
+      swapchainExtent.height = Utils::Clamp(m_nHeight, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
     else
     {
@@ -422,7 +458,8 @@ namespace Graphics
       swapChainCreateInfo.pQueueFamilyIndices   = queueFamilyIndices;
       KISS_LOG_ALWAYS("Graphics queue does not support present. Using a separate queue family for presenting instead.");
     }
-
+    if (m_vkSwapChain)
+      m_vkDevice.destroySwapchainKHR(m_vkSwapChain);
     m_vkSwapChain = m_vkDevice.createSwapchainKHR(swapChainCreateInfo);
   }
 
@@ -433,10 +470,12 @@ namespace Graphics
 
     m_swapchainImageViews.resize(m_swapchainImages.size());
     vk::ImageViewCreateInfo imageViewCreateInfo({}, {}, vk::ImageViewType::e2D, m_swapchainFormat, {}, { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 });
-    for (const vk::Image& image : m_swapchainImages)
+    for (uint32 i = 0; i < m_swapchainImages.size(); i++)
     {
-      imageViewCreateInfo.image = image;
-      m_swapchainImageViews.push_back(m_vkDevice.createImageView(imageViewCreateInfo));
+      imageViewCreateInfo.image = m_swapchainImages[i];
+      if (m_swapchainImageViews[i])
+        m_vkDevice.destroyImageView(m_swapchainImageViews[i]);
+      m_swapchainImageViews[i] = m_vkDevice.createImageView(imageViewCreateInfo);
     }
   }
 
