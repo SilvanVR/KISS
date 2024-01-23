@@ -1,0 +1,87 @@
+<23.01.2024-22:14:29>[INFO] Successfully read engine.ini (9 entries read - 8 added)
+<23.01.2024-22:14:29>[INFO] Virtual File System initialized...
+<23.01.2024-22:14:29>[INFO] Console initialized...
+<23.01.2024-22:14:29>[INFO] Initializing Engine...
+<23.01.2024-22:14:29>[INFO] Initializing Renderer...
+<23.01.2024-22:14:29>[INFO] [0] GPU found: NVIDIA GeForce RTX 3080
+<23.01.2024-22:14:29>[INFO] Using GPU: NVIDIA GeForce RTX 3080
+<23.01.2024-22:14:30>[INFO] Renderer initialized...
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1440, 719
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1436, 714
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1413, 697
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1382, 676
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1344, 652
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1292, 619
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1248, 587
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1184, 536
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1124, 489
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1074, 447
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1026, 411
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 988, 385
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 964, 369
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 947, 357
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 942, 357
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 951, 365
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 972, 384
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1017, 414
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1065, 438
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1136, 467
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1225, 492
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1307, 508
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1419, 523
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1512, 528
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1584, 527
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1619, 517
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1622, 512
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1608, 499
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1567, 471
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1497, 437
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1394, 399
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1284, 369
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1168, 351
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1074, 349
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 927, 367
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 853, 398
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 817, 433
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 812, 483
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 850, 525
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 906, 558
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1065, 598
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1160, 600
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1242, 587
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1302, 567
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1331, 545
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1333, 527
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1314, 497
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1278, 460
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1218, 422
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1138, 396
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1043, 387
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 948, 395
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 877, 417
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 817, 454
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 793, 495
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 799, 535
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 846, 590
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 927, 633
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1030, 658
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1181, 652
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1240, 636
+<23.01.2024-22:14:33>[INFO] Window resized. New width/height: 1270, 624
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1282, 615
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1282, 602
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1258, 582
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1216, 565
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1163, 555
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1096, 549
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1046, 547
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1013, 548
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1004, 550
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1006, 552
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1014, 553
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1022, 553
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1035, 552
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1045, 551
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1051, 549
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1057, 547
+<23.01.2024-22:14:34>[INFO] Window resized. New width/height: 1060, 545

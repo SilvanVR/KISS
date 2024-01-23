@@ -10,6 +10,8 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
+Graphics::IRenderer* g_pIRenderer = nullptr;
+
 namespace Graphics
 {
   ////////////////////////////////////////////////////////////////////
@@ -18,12 +20,6 @@ namespace Graphics
   int64 CRenderer::CV_r_vsync            = 0;
   int64 CRenderer::CV_r_vulkanValidation = 0;
 
-  ////////////////////////////////////////////////////////////////////
-  void GLFWErrorCallback(int code, const char* description)
-  {
-    KISS_LOG_ERROR("GLFW Error %d: %s", code, description);
-  }
-  
   ////////////////////////////////////////////////////////////////////
   void FramebufferSizeCallback(GLFWwindow* window, int width, int height) 
   {
@@ -41,12 +37,12 @@ namespace Graphics
   }
 
   ////////////////////////////////////////////////////////////////////
-  IRenderer* CreateRenderer()
+  void CreateRenderer()
   {
-    KISS_LOG_ALWAYS("Initializing Renderer...");
+    assert(!g_pRenderer);
     g_pRenderer = new CRenderer;
+    g_pIRenderer = g_pRenderer;
     g_pRenderer->InitRenderer();
-    return g_pRenderer;
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -129,27 +125,6 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void CRenderer::BeginFrame()
   {
-    static f64 nUpdateTimerPerSecondFrequency = (1.0 / 2.0f);
-    static f64 nUpdateTimerCountSecs = 0.0f;
-    static f64 fLastTimeSecs = glfwGetTime();
-
-    f64 fCurTimeSecs = glfwGetTime();
-    f64 fDeltaSecs = fCurTimeSecs - fLastTimeSecs;
-    fLastTimeSecs = fCurTimeSecs;
-
-    f64 fDeltaMS = 1000 * fDeltaSecs;
-    nUpdateTimerCountSecs += fDeltaSecs;
-    if (nUpdateTimerCountSecs > nUpdateTimerPerSecondFrequency)
-    {
-      // TODO: Average/Smooth out framerate
-      nUpdateTimerCountSecs -= nUpdateTimerPerSecondFrequency;
-      char buf[256];
-      sprintf_s(buf, "%.1fms (%d FPS)", fDeltaMS, int(1000.0 / fDeltaMS));
-      glfwSetWindowTitle(m_pWindow, buf);
-    }
-
-    glfwPollEvents();
-
     if (bool(CV_r_vsync) != m_bVSync || m_nWidth != CV_r_width || m_nHeight != CV_r_height)
       OnWindowSizeChanged(int(CV_r_width), int(CV_r_height));
 
@@ -213,18 +188,20 @@ namespace Graphics
   }
 
   ////////////////////////////////////////////////////////////////////
+  void CRenderer::SetWindowTitle(const char* pName)
+  {
+    glfwSetWindowTitle(m_pWindow, pName);
+  }
+
+  ////////////////////////////////////////////////////////////////////
   void CRenderer::InitRenderer()
   {
+    KISS_LOG_ALWAYS("Initializing Renderer...");
     _RegisterCVars();
 
-    m_bVSync = bool(CV_r_vsync);
+    m_bVSync  = bool(CV_r_vsync);
     m_nWidth  = uint32(CV_r_width);
     m_nHeight = uint32(CV_r_height);
-
-    bool bSuccess = glfwInit();
-    KISS_FATAL_COND(bSuccess, "Failed to initialize glfw");
-
-    glfwSetErrorCallback(GLFWErrorCallback); 
 
     assert(glfwVulkanSupported() == GLFW_TRUE);
 
@@ -254,7 +231,7 @@ namespace Graphics
   void CRenderer::_CreateWindow()
   {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    CVar* pAppName = CConsole::Instance().GetCVar("appName");
+    CVar* pAppName = g_pConsole->GetCVar("appName");
     m_pWindow = glfwCreateWindow((int)CV_r_width, (int)CV_r_height, pAppName->GetString().c_str(), NULL, NULL);
     KISS_FATAL_COND(m_pWindow, "Failed to create Window");
     glfwSetFramebufferSizeCallback(m_pWindow, FramebufferSizeCallback);
@@ -270,8 +247,8 @@ namespace Graphics
     {
       // Instance
       {
-        CVar* pAppName    = CConsole::Instance().GetCVar("appName");
-        CVar* pEngineName = CConsole::Instance().GetCVar("engineName");
+        CVar* pAppName    =  g_pConsole->GetCVar("appName");
+        CVar* pEngineName =  g_pConsole->GetCVar("engineName");
         vk::ApplicationInfo applicationInfo(
           pAppName    ? pAppName->GetString().c_str()     : "NoName", 1, 
           pEngineName ? pEngineName->GetString().c_str() : "NoEngineName", 

@@ -11,7 +11,10 @@ namespace Graphics
     virtual bool ShouldClose() = 0;
     virtual void BeginFrame() = 0;
     virtual void EndFrame() = 0;
+    virtual void SetWindowTitle(const char* pName) = 0;
   };
 
-  IRenderer* CreateRenderer();
+  void CreateRenderer();
 };
+
+extern Graphics::IRenderer* g_pIRenderer;

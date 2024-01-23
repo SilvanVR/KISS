@@ -1,6 +1,6 @@
 #include <stdafx.h>
 
-#include "Graphics/IRenderer.h"
+#include "CoreEngine/CoreEngine.h"
 
 #ifdef CONSOLE_APP
 int main(int argc, char** argv)
@@ -8,25 +8,15 @@ int main(int argc, char** argv)
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cmdshow)
 #endif
 {
-  static string s_name;
-  static string s_appName;
-  REGISTER_CVAR("engineName", &s_name, "KISSEngine", "Name of the engine");
-  REGISTER_CVAR("appName", &s_appName, "NoName", "Name of the program");
+  CCoreEngine* pCoreEngine = new CCoreEngine;
+  pCoreEngine->InitEngine();
+  pCoreEngine->Run();
 
-  KISS_LOG_ALWAYS("Initializing Engine...");
 
-  Graphics::IRenderer* pRenderer = Graphics::CreateRenderer(); 
+  ////////////////////////////////////////////////////
+  // TODO
 
-  KISS_LOG_ALWAYS("Renderer initialized...");
-
-  while (!pRenderer->ShouldClose())
-  {
-    pRenderer->BeginFrame();
-
-    pRenderer->EndFrame();
-  }
-
-  // Restructuring
+  // Time management
 
   // Input manager
 

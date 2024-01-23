@@ -35,6 +35,7 @@ namespace Graphics
     virtual bool ShouldClose() override;
     virtual void BeginFrame() override;
     virtual void EndFrame() override;
+    virtual void SetWindowTitle(const char* pName) override;
 
     //////////////////////////
     // CVARS

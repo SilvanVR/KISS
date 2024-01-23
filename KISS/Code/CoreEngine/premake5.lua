@@ -17,3 +17,8 @@ project "CoreEngine"
 		"%{includeDir.RootProjects}",
 		"%{includeDir.SDKs}"
 	}
+
+	links 
+	{
+		"glfw3dll"
+	}

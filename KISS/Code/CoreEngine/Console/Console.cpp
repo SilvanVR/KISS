@@ -1,6 +1,7 @@
 #include "stdafx_common.h"
 #include "Console.h"
-#include "FileSystem.h"
+
+#include "IVirtualFileSystem.h"
 
 #include <cstdarg>
 #include <iomanip>
@@ -40,22 +41,27 @@ string GetCurrentDateTime()
 }
 
 ////////////////////////////////////////////////////////////////////
-int64 CConsole::CV_r_logVerbosity;
+IConsole* g_pConsole = nullptr;
 
 ////////////////////////////////////////////////////////////////////
-CConsole& CConsole::Instance()
+void CreateConsole()
 {
-  static CConsole s_instance;
-  return s_instance;
+  assert(!g_pConsole);
+  CConsole* pConsole = new CConsole();
+  g_pConsole = pConsole;
+  pConsole->InitConsole();
 }
 
 ////////////////////////////////////////////////////////////////////
-CConsole::CConsole()
+int64 CConsole::CV_r_logVerbosity;
+
+////////////////////////////////////////////////////////////////////
+void CConsole::InitConsole()
 {
-  CFileSystem::Instance().WriteFile(ENGINE_LOG, "", EFileWriteFlags::Clear);
+  g_pVFS->WriteFile(ENGINE_LOG, "", VFS::EFileWriteFlags::Clear);
 
   size_t numLinesRead = 0;
-  if (CFile file = CFileSystem::Instance().ReadFile(ENGINE_CONFIG))
+  if (VFS::CFile file = g_pVFS->ReadFile(ENGINE_CONFIG))
   {
     const string& contents = file.GetData();
     std::vector<string> arrLines = StringUtils::SplitString(contents, '\n');
@@ -256,7 +262,7 @@ void CConsole::_RegisterCVars()
 void CConsole::_WriteLine(const char* pBuffer)
 {
   _PrintToConsole(pBuffer);
-  CFileSystem::Instance().WriteFile(ENGINE_LOG, pBuffer, EFileWriteFlags::Append);
+  g_pVFS->WriteFile(ENGINE_LOG, pBuffer, VFS::EFileWriteFlags::Append);
 }
 
 ////////////////////////////////////////////////////////////////////
