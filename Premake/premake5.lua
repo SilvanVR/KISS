@@ -20,7 +20,6 @@ workspace (projectName)
 	location (solution)
 	architecture "x64"
 	language "C++"
-	flags { "FatalWarnings" }
 	targetdir (bin)
 	objdir (binTmp)
 	libdirs (libs)
@@ -32,7 +31,7 @@ workspace (projectName)
 
 	-- filters
 	filter "system:windows"
-		cppdialect "C++20"
+		cppdialect "C++17"
 		systemversion "latest"
 		defines { "WIN32" }
 		

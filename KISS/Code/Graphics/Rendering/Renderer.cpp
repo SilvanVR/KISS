@@ -1,16 +1,69 @@
 #include "stdafx_common.h"
 
 #include "Renderer.h"
-
 #include "Utils/VkUtils.h"
 
 #include <SDKs/vulkan/vulkan_extension_inspection.hpp>
-
 #include <sstream>
+
+#include <SDKs/glslang/Public/ShaderLang.h>
+#include <SDKs/glslang/Public/ResourceLimits.h>
+#include <SDKs/glslang/SPIRV/GlslangToSpv.h>
+
+void CompileGLSLtoSPIRV(const char* shaderSource, EShLanguage shaderType, std::vector<uint32_t>& spirv) 
+{
+	glslang::InitializeProcess();
+
+	const EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
+
+	glslang::TShader shader(shaderType);
+	shader.setStrings(&shaderSource, 1);
+
+	if (!shader.parse(GetDefaultResources(), 100, false, messages)) {
+		// Handle error
+		return;
+	}
+
+	glslang::TProgram program;
+	program.addShader(&shader);
+
+	if (!program.link(messages)) {
+		// Handle error
+		return;
+	}
+
+	//glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv);
+
+	glslang::FinalizeProcess();
+}
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 Graphics::IRenderer* g_pIRenderer = nullptr;
+
+//vk::ClearColorValue clearValue = vk::ClearColorValue(0.2f, 0.2f, 0.2f, 0.2f);
+//Cmd()..clearColorImage(
+//  CurBackbuffer(), 
+//  vk::ImageLayout::eColorAttachmentOptimal, 
+//  clearValue,
+//  vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
+
+const char* pVertexShader = R"(#version 330 core
+layout (location = 0) in vec3 aPos;
+
+void main()
+{
+    gl_Position = vec4(aPos, 1.0);
+}
+)";
+
+const char* pPixelShader = R"(#version 330 core
+out vec4 FragColor;
+void main()
+{
+    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+}
+)";
 
 namespace Graphics
 {
@@ -30,6 +83,9 @@ namespace Graphics
   void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE); // Close the window when Escape is pressed
+    }
+    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+			CRenderer::CV_r_vsync = !CRenderer::CV_r_vsync; // Toggle the r_vsync variable
     }
     else {
       std::cout << "Key: " << key << " Action: " << action << std::endl;
@@ -110,6 +166,7 @@ namespace Graphics
     CV_r_height = int64(nHeight);
     if (nWidth && nHeight)
     {
+			m_vkDevice.waitIdle();
       _CreateSwapchain();
       _CreateSwapchainImages();
       KISS_LOG("Window resized. New width/height: %d, %d", nWidth, nHeight);
@@ -131,34 +188,33 @@ namespace Graphics
     if (m_nWidth == 0 || m_nHeight == 0)
       return;
 
-    vk::ResultValue<uint32_t> nexImage =
-      m_vkDevice.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR(m_vkSwapChain, UINT64_MAX, m_imageAcquiredSemaphore, {}, 1));
+    vk::ResultValue<uint32_t> nexImage = m_vkDevice.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR(m_vkSwapChain, UINT64_MAX, m_imageAcquiredSemaphore, {}, 1));
     assert(nexImage.result == vk::Result::eSuccess);
     m_nCurSwapchainIdx = nexImage.value;
 
-    while (vk::Result::eTimeout == m_vkDevice.waitForFences(m_vkPerFrameFence[m_nCurSwapchainIdx], VK_TRUE, UINT64_MAX));
-    m_vkDevice.resetFences(m_vkPerFrameFence[m_nCurSwapchainIdx]);
+    while (vk::Result::eTimeout == m_vkDevice.waitForFences(CurFence(), VK_TRUE, UINT64_MAX));
+    m_vkDevice.resetFences(CurFence());
 
-    m_vkPerFrameCmd[m_nCurSwapchainIdx].begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)));
+    Cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)));
     
-    VkUtils::SetImageLayout(m_vkPerFrameCmd[m_nCurSwapchainIdx], m_swapchainImages[m_nCurSwapchainIdx], m_swapchainFormat,
-      vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+    VkUtils::SetImageLayout(Cmd(), CurBackbuffer(), m_swapchainFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
-    //vk::ClearColorValue clearValue = vk::ClearColorValue(0.2f, 0.2f, 0.2f, 0.2f);
-    //m_vkPerFrameCmd[m_nCurSwapchainIdx]..clearColorImage(
-    //  m_swapchainImages[m_nCurSwapchainIdx], 
-    //  vk::ImageLayout::eColorAttachmentOptimal, 
-    //  clearValue,
-    //  vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
+		//vk::ShaderCreateInfoEXT shaderCreateInfo(vk::ShaderModuleCreateFlags(), sizeof(shader), shader);
+		//VkShaderEXT shader = VkUtils::LoadShader("shaders/colored_triangle.vert.spv");
+		vk::ShaderEXT shader;
 
-    VkUtils::SetImageLayout(m_vkPerFrameCmd[m_nCurSwapchainIdx], m_swapchainImages[m_nCurSwapchainIdx], m_swapchainFormat,
-      vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
+		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eVertex, shader);
 
-    m_vkPerFrameCmd[m_nCurSwapchainIdx].end();
+		//Cmd().setDepthTestEnable(true);
+		//Cmd().draw(3, 1, 0, 0);
+
+    VkUtils::SetImageLayout(Cmd(), CurBackbuffer(), m_swapchainFormat, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
+
+    Cmd().end();
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-    vk::SubmitInfo         submitInfo(m_imageAcquiredSemaphore, waitDestinationStageMask, m_vkPerFrameCmd[m_nCurSwapchainIdx], m_renderCompletedSemaphore);
-    m_vkGraphicsQueue.submit(submitInfo, m_vkPerFrameFence[m_nCurSwapchainIdx]);
+    vk::SubmitInfo         submitInfo(m_imageAcquiredSemaphore, waitDestinationStageMask, Cmd(), m_renderCompletedSemaphore);
+    m_vkGraphicsQueue.submit(submitInfo, CurFence());
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -314,7 +370,9 @@ namespace Graphics
         std::vector<const char*> layerNames{};
         std::vector<const char*> deviceExtensions{ 
           VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-          VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+          VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+					VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+					//VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
         };
 
         std::vector<vk::ExtensionProperties> extensionProperties = m_vkPhysicalDevice.enumerateDeviceExtensionProperties();

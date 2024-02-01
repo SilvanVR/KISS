@@ -78,7 +78,7 @@ void CCoreEngine::Heartbeat(f64 fTimeStep)
    
   g_pIRenderer->BeginFrame();
 
- 
+	
 
   g_pIRenderer->EndFrame();
 }

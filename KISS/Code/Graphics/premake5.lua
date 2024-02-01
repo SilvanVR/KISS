@@ -23,3 +23,21 @@ project "Graphics"
 		"CoreEngine",
 		"glfw3dll"
 	}
+
+	filter "configurations:Debug"
+		links 
+		{
+			"glslang-default-resource-limitsd",
+			"glslangd",
+			"GenericCodeGend.lib",
+			"MachineIndependentd.lib"
+		}
+
+	filter "configurations:Release"	
+		links 
+		{
+			"glslang-default-resource-limits",
+			"glslang",
+			"GenericCodeGen.lib",
+			"MachineIndependent.lib"
+		}

@@ -78,6 +78,10 @@ namespace Graphics
     std::vector<vk::ImageView>   m_swapchainImageViews;
     std::vector<vk::Framebuffer> m_framebuffers;
 
+		vk::CommandBuffer& Cmd()   { return m_vkPerFrameCmd[m_nCurSwapchainIdx]; }
+		vk::Image& CurBackbuffer() { return m_swapchainImages[m_nCurSwapchainIdx]; }
+		vk::Fence& CurFence()      { return m_vkPerFrameFence[m_nCurSwapchainIdx]; }
+
     void _RegisterCVars();
     void _InitVulkan();
     void _CreateWindow();

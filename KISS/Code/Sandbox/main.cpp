@@ -16,11 +16,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   ////////////////////////////////////////////////////
   // TODO
 
+	// Shaders (Colored Triangle)
+
   // Time management
 
   // Input manager
-
-  // Shaders (Colored Triangle)
 
   // Vulkan 
 
