@@ -20,7 +20,7 @@ void CompileGLSLtoSPIRV(const char* shaderSource, EShLanguage shaderType, std::v
 	shader.setStrings(&shaderSource, 1);
 
 	if (!shader.parse(GetDefaultResources(), 100, false, messages)) {
-		// Handle error
+		KISS_LOG_WARN("Failed to parse shader:\n%s", shader.getInfoLog());
 		return;
 	}
 
@@ -28,11 +28,11 @@ void CompileGLSLtoSPIRV(const char* shaderSource, EShLanguage shaderType, std::v
 	program.addShader(&shader);
 
 	if (!program.link(messages)) {
-		// Handle error
+		KISS_LOG_WARN("Failed to link shader:\n%s", shader.getInfoLog());
 		return;
 	}
 
-	//glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv);
+	glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv);
 
 	glslang::FinalizeProcess();
 }
@@ -264,6 +264,10 @@ namespace Graphics
     _CreateWindow();
     _InitVulkan();
 
+		std::vector<uint32_t> vertexShader, pixelShader;
+		CompileGLSLtoSPIRV(pVertexShader, EShLangVertex, vertexShader);
+		CompileGLSLtoSPIRV(pPixelShader, EShLangFragment, pixelShader);
+
     // Borderless fullscreen
     //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     //glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
@@ -372,7 +376,7 @@ namespace Graphics
           VK_KHR_SWAPCHAIN_EXTENSION_NAME,
           VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 					VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
-					//VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+					VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
         };
 
         std::vector<vk::ExtensionProperties> extensionProperties = m_vkPhysicalDevice.enumerateDeviceExtensionProperties();
@@ -384,7 +388,13 @@ namespace Graphics
           KISS_FATAL_COND(it != extensionProperties.end(), "Vulkan: Could not find device extension %s", pDeviceExtension);
         }
 
-        m_vkDevice = m_vkPhysicalDevice.createDevice(vk::DeviceCreateInfo(vk::DeviceCreateFlags(), deviceQueueCreateInfo, layerNames, deviceExtensions));
+        vk::PhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures;
+        shaderObjectFeatures.shaderObject = VK_TRUE;
+
+        vk::PhysicalDeviceFeatures2 deviceFeatures2 = m_vkPhysicalDevice.getFeatures2();
+        deviceFeatures2.pNext = &shaderObjectFeatures;
+
+        m_vkDevice = m_vkPhysicalDevice.createDevice(vk::DeviceCreateInfo(vk::DeviceCreateFlags(), deviceQueueCreateInfo, layerNames, deviceExtensions, nullptr, &deviceFeatures2));
         VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkDevice);
       }
 

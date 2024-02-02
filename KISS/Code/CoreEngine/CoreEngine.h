@@ -14,5 +14,6 @@ private:
 	static string CV_e_engineName;
 	static string CV_e_appName;
 
+	void _UpdateWindowTitle(f64 fTimeStep);
 	void _RegisterCVars();
 };

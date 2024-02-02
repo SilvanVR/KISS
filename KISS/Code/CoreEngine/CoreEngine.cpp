@@ -6,7 +6,6 @@
 #include "IVirtualFileSystem.h"
 
 #include <SDKs/glfw/glfw3.h>
-
 ////////////////////////////////////////////////////////////////////
 void GLFWErrorCallback(int code, const char* description)
 {
@@ -63,22 +62,43 @@ void CCoreEngine::Run()
 ////////////////////////////////////////////////////////////////////
 void CCoreEngine::Heartbeat(f64 fTimeStep)
 {
-  static f64 nUpdateTimerCountSecs = 0.0f;
-  static f64 nUpdateTimerPerSecondFrequency = (1.0 / 2.0f);
-  nUpdateTimerCountSecs += fTimeStep;
-  if (nUpdateTimerCountSecs > nUpdateTimerPerSecondFrequency)
-  {
-    // TODO: Average/Smooth out framerate
-    nUpdateTimerCountSecs -= nUpdateTimerPerSecondFrequency;
-    f64 fDeltaMS = 1000 * fTimeStep;
-    char buf[256];
-    sprintf_s(buf, "%.1fms (%d FPS)", fDeltaMS, int(1000.0 / fDeltaMS));
-    g_pIRenderer->SetWindowTitle(buf);
-  }
-   
+	_UpdateWindowTitle(fTimeStep);
+
   g_pIRenderer->BeginFrame();
 
 	
 
   g_pIRenderer->EndFrame();
+}
+
+////////////////////////////////////////////////////////////////////
+void CCoreEngine::_UpdateWindowTitle(f64 fTimeStep)
+{
+	static f64 nUpdateTimerCountSecs = 0.0f;
+	static f64 nUpdateTimerPerSecondFrequency = (1.0 / 2.0f);
+	static std::deque<f64> frameTimes; // Keep track of the frame times
+	static const size_t numFrames = 30; // Number of frames to consider for the moving average
+	static const f64 maxFrameTimeDeviation = 2.0; // Maximum deviation from the average frame time
+
+	f64 fDeltaMS = 1000 * fTimeStep;
+	f64 averageFrameTime = frameTimes.empty() ? 0.0 : std::accumulate(frameTimes.begin(), frameTimes.end(), 0.0) / frameTimes.size();
+
+	// Only add the new frame time if it's within the threshold
+	if (frameTimes.empty() || std::abs(fDeltaMS - averageFrameTime) < maxFrameTimeDeviation * averageFrameTime)
+	{
+		frameTimes.push_back(fDeltaMS); // Add the current frame time to the deque
+		if (frameTimes.size() > numFrames) // If we have more than numFrames frame times, remove the oldest one
+			frameTimes.pop_front();
+	}
+
+	nUpdateTimerCountSecs += fTimeStep;
+	if (nUpdateTimerCountSecs > nUpdateTimerPerSecondFrequency)
+	{
+		nUpdateTimerCountSecs -= nUpdateTimerPerSecondFrequency;
+
+		averageFrameTime = std::accumulate(frameTimes.begin(), frameTimes.end(), 0.0) / frameTimes.size();
+		char buf[256];
+		sprintf_s(buf, "%.1fms (%d FPS)", averageFrameTime, int(1000.0 / averageFrameTime));
+		g_pIRenderer->SetWindowTitle(buf);
+	}
 }

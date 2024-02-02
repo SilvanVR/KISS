@@ -7,6 +7,9 @@
 #include <unordered_map>
 #include <array>
 #include <utility>
+#include <deque>
+#include <numeric>
+#include <algorithm>
 
 #include "Utils/Utils.h"
 

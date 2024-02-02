@@ -27,17 +27,13 @@ project "Graphics"
 	filter "configurations:Debug"
 		links 
 		{
-			"glslang-default-resource-limitsd",
-			"glslangd",
-			"GenericCodeGend.lib",
-			"MachineIndependentd.lib"
+			"shaderc_combinedd",
+			"glslang-default-resource-limitsd"
 		}
 
-	filter "configurations:Release"	
+	filter "configurations:Release"
 		links 
 		{
-			"glslang-default-resource-limits",
-			"glslang",
-			"GenericCodeGen.lib",
-			"MachineIndependent.lib"
+			"shaderc_combined",
+			"glslang-default-resource-limits"
 		}
