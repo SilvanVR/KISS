@@ -10,6 +10,9 @@
 #include <SDKs/glslang/Public/ResourceLimits.h>
 #include <SDKs/glslang/SPIRV/GlslangToSpv.h>
 
+vk::ShaderEXT g_vertexShader;
+vk::ShaderEXT g_pixelShader;
+
 void CompileGLSLtoSPIRV(const char* shaderSource, EShLanguage shaderType, std::vector<uint32_t>& spirv) 
 {
 	glslang::InitializeProcess();
@@ -48,20 +51,41 @@ Graphics::IRenderer* g_pIRenderer = nullptr;
 //  clearValue,
 //  vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
 
-const char* pVertexShader = R"(#version 330 core
+const char* pVertexShader2 = R"(#version 330 core
 layout (location = 0) in vec3 aPos;
 
 void main()
 {
-    gl_Position = vec4(aPos, 1.0);
+	gl_Position = vec4(aPos, 1.0);
 }
 )";
 
-const char* pPixelShader = R"(#version 330 core
-out vec4 FragColor;
+const char* pVertexShader = R"(#version 460 core
+layout(location = 0) out vec2 TexCoords;
+
 void main()
 {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+  // Vertex positions for a fullscreen triangle
+  vec2 vertices[3] = vec2[](
+      vec2(-1.0, -1.0),
+      vec2( 3.0, -1.0),
+      vec2(-1.0,  3.0)
+  );
+
+  // Use gl_VertexIndex to fetch the current vertex position
+  gl_Position = vec4(vertices[gl_VertexIndex], 0.0, 1.0);
+
+  // Pass the vertex position as a texture coordinate to the fragment shader
+  TexCoords = (vertices[gl_VertexIndex] + vec2(1.0, 1.0)) * 0.5;
+}
+)";
+
+const char* pPixelShader = R"(#version 460 core
+layout(location = 0) out vec4 FragColor;
+layout(location = 0) in vec2 TexCoords;
+void main()
+{
+	FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 }
 )";
 
@@ -199,14 +223,49 @@ namespace Graphics
     
     VkUtils::SetImageLayout(Cmd(), CurBackbuffer(), m_swapchainFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
-		//vk::ShaderCreateInfoEXT shaderCreateInfo(vk::ShaderModuleCreateFlags(), sizeof(shader), shader);
-		//VkShaderEXT shader = VkUtils::LoadShader("shaders/colored_triangle.vert.spv");
-		vk::ShaderEXT shader;
+		vk::RenderingAttachmentInfo colorAttachment{};
+		colorAttachment.imageView = m_swapchainImageViews[m_nCurSwapchainIdx];
+		colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+		colorAttachment.clearValue = vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f});
+		colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 
-		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eVertex, shader);
+		vk::RenderingInfo renderPassInfo{};
+		renderPassInfo.layerCount = 1;
+		renderPassInfo.renderArea = vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight));
+		//renderPassInfo.viewMask = 0x1;
+		renderPassInfo.pColorAttachments = &colorAttachment;
+		renderPassInfo.colorAttachmentCount = 1;
 
-		//Cmd().setDepthTestEnable(true);
-		//Cmd().draw(3, 1, 0, 0);
+		Cmd().beginRendering(renderPassInfo);
+
+		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eGeometry, { VK_NULL_HANDLE });
+		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eTessellationControl, { VK_NULL_HANDLE });
+		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eTessellationEvaluation, { VK_NULL_HANDLE });
+		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eVertex, g_vertexShader);
+		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eFragment, g_pixelShader);
+
+		Cmd().setViewportWithCount(vk::Viewport(0, 0, (float)m_nWidth, (float)m_nHeight, 0.0f, 1.0f));
+		Cmd().setScissorWithCount(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight)));
+		Cmd().setDepthTestEnable(false);
+		Cmd().setDepthWriteEnable(false);
+		Cmd().setStencilTestEnable(false);
+		Cmd().setRasterizerDiscardEnable(false);
+		Cmd().setPolygonModeEXT(vk::PolygonMode::eFill);
+		Cmd().setRasterizationSamplesEXT(vk::SampleCountFlagBits::e1);
+		vk::SampleMask sampleMask(0);
+		Cmd().setSampleMaskEXT(vk::SampleCountFlagBits::e1, &sampleMask);
+		Cmd().setVertexInputEXT({}, {});
+		Cmd().setAlphaToCoverageEnableEXT(false);
+		Cmd().setCullMode(vk::CullModeFlagBits::eNone);
+		Cmd().setDepthBiasEnable(false);
+		Cmd().setPrimitiveTopology(vk::PrimitiveTopology::eTriangleList);
+		Cmd().setPrimitiveRestartEnable(false);
+		Cmd().setColorWriteMaskEXT(0, vk::FlagTraits<vk::ColorComponentFlagBits>::allFlags);
+		Cmd().setColorBlendEnableEXT(0, { false });
+
+		Cmd().draw(3, 1, 0, 0);
+
+		Cmd().endRendering();
 
     VkUtils::SetImageLayout(Cmd(), CurBackbuffer(), m_swapchainFormat, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
 
@@ -264,9 +323,32 @@ namespace Graphics
     _CreateWindow();
     _InitVulkan();
 
-		std::vector<uint32_t> vertexShader, pixelShader;
-		CompileGLSLtoSPIRV(pVertexShader, EShLangVertex, vertexShader);
-		CompileGLSLtoSPIRV(pPixelShader, EShLangFragment, pixelShader);
+		std::vector<uint32_t> vertexShaderSPV, pixelShaderSPV;
+		CompileGLSLtoSPIRV(pVertexShader, EShLangVertex, vertexShaderSPV);
+		CompileGLSLtoSPIRV(pPixelShader, EShLangFragment, pixelShaderSPV);
+
+		//VkShaderEXT shader = VkUtils::LoadShader("shaders/colored_triangle.vert.spv");
+		{
+			vk::ShaderCreateInfoEXT shaderCreateInfo{};
+			shaderCreateInfo.pCode     = vertexShaderSPV.data();
+			shaderCreateInfo.codeSize  = vertexShaderSPV.size() * sizeof(uint32_t);
+			shaderCreateInfo.stage     = vk::ShaderStageFlagBits::eVertex;
+			shaderCreateInfo.pName     = "main";
+			shaderCreateInfo.nextStage = vk::ShaderStageFlagBits::eFragment;
+			shaderCreateInfo.codeType  = vk::ShaderCodeTypeEXT::eSpirv;
+			g_vertexShader = m_vkDevice.createShaderEXT(shaderCreateInfo);
+		}
+
+		{
+			vk::ShaderCreateInfoEXT shaderCreateInfo{};
+			shaderCreateInfo.pCode     = pixelShaderSPV.data();
+			shaderCreateInfo.codeSize  = pixelShaderSPV.size() * sizeof(uint32_t);
+			shaderCreateInfo.pName     = "main";
+			shaderCreateInfo.stage     = vk::ShaderStageFlagBits::eFragment;
+			shaderCreateInfo.codeType  = vk::ShaderCodeTypeEXT::eSpirv;
+			g_pixelShader = m_vkDevice.createShaderEXT(shaderCreateInfo);
+		}
+
 
     // Borderless fullscreen
     //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -391,10 +473,14 @@ namespace Graphics
         vk::PhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures;
         shaderObjectFeatures.shaderObject = VK_TRUE;
 
-        vk::PhysicalDeviceFeatures2 deviceFeatures2 = m_vkPhysicalDevice.getFeatures2();
-        deviceFeatures2.pNext = &shaderObjectFeatures;
+				vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
+				dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+				dynamicRenderingFeatures.pNext = &shaderObjectFeatures;
 
-        m_vkDevice = m_vkPhysicalDevice.createDevice(vk::DeviceCreateInfo(vk::DeviceCreateFlags(), deviceQueueCreateInfo, layerNames, deviceExtensions, nullptr, &deviceFeatures2));
+        vk::PhysicalDeviceFeatures2 deviceFeatures;
+        deviceFeatures.pNext = &dynamicRenderingFeatures;
+
+        m_vkDevice = m_vkPhysicalDevice.createDevice(vk::DeviceCreateInfo(vk::DeviceCreateFlags(), deviceQueueCreateInfo, layerNames, deviceExtensions, nullptr, &deviceFeatures));
         VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vkDevice);
       }
 
