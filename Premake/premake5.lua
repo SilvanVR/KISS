@@ -29,6 +29,8 @@ workspace (projectName)
 	-- Execute buildscript each time before we build (MAY BECOME TO EXPENSIVE IN THE FUTURE)
 	prebuildcommands { 'cd "$(ProjectDir)../.."', 'call "GenerateProject.bat"' }
 
+	linkoptions { "/ignore:4099" } 
+
 	-- filters
 	filter "system:windows"
 		cppdialect "C++17"

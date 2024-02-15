@@ -12,11 +12,13 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   pCoreEngine->InitEngine();
   pCoreEngine->Run();
 
+	// Inengine renderdoc (Press a button to do a capture)
+
 
   ////////////////////////////////////////////////////
   // TODO
 
-	// Shaders (Colored Triangle)
+	// Vulkan synchronization library
 
   // Time management
 
@@ -25,8 +27,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   // Vulkan 
 
   // Optik Profiler
-
-  // Inengine renderdoc (Press a button to do a capture)
 
   // ImGUI 
 

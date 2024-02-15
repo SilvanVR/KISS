@@ -183,7 +183,9 @@ void CConsole::Error(const char* format, ...)
     BUFFER_TRUNCATED();
 
 #ifdef _WIN32
-  MessageBoxA(NULL, buffer, "Error", MB_OK);
+  int result = MessageBoxA(NULL, buffer, "Error", MB_OKCANCEL);
+	if (result == IDCANCEL) 
+		DebugBreak();
 #endif
 
   SetColor(Color::WHITE, Color::BLACK);

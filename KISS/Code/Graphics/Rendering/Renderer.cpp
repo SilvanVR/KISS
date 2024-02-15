@@ -3,62 +3,15 @@
 #include "Renderer.h"
 #include "Utils/VkUtils.h"
 
-#include <SDKs/vulkan/vulkan_extension_inspection.hpp>
-#include <sstream>
+#include <SDKs/renderdoc/renderdoc_app.h>
 
-#include <SDKs/glslang/Public/ShaderLang.h>
-#include <SDKs/glslang/Public/ResourceLimits.h>
-#include <SDKs/glslang/SPIRV/GlslangToSpv.h>
-
-vk::ShaderEXT g_vertexShader;
-vk::ShaderEXT g_pixelShader;
-
-void CompileGLSLtoSPIRV(const char* shaderSource, EShLanguage shaderType, std::vector<uint32_t>& spirv) 
-{
-	glslang::InitializeProcess();
-
-	const EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
-
-	glslang::TShader shader(shaderType);
-	shader.setStrings(&shaderSource, 1);
-
-	if (!shader.parse(GetDefaultResources(), 100, false, messages)) {
-		KISS_LOG_WARN("Failed to parse shader:\n%s", shader.getInfoLog());
-		return;
-	}
-
-	glslang::TProgram program;
-	program.addShader(&shader);
-
-	if (!program.link(messages)) {
-		KISS_LOG_WARN("Failed to link shader:\n%s", shader.getInfoLog());
-		return;
-	}
-
-	glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv);
-
-	glslang::FinalizeProcess();
-}
+static RENDERDOC_API_1_6_0* g_RenderDocLib = nullptr;
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 Graphics::IRenderer* g_pIRenderer = nullptr;
 
-//vk::ClearColorValue clearValue = vk::ClearColorValue(0.2f, 0.2f, 0.2f, 0.2f);
-//Cmd()..clearColorImage(
-//  CurBackbuffer(), 
-//  vk::ImageLayout::eColorAttachmentOptimal, 
-//  clearValue,
-//  vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
-
-const char* pVertexShader2 = R"(#version 330 core
-layout (location = 0) in vec3 aPos;
-
-void main()
-{
-	gl_Position = vec4(aPos, 1.0);
-}
-)";
+vk::Pipeline s_vkPipeline;
 
 const char* pVertexShader = R"(#version 460 core
 layout(location = 0) out vec2 TexCoords;
@@ -67,9 +20,9 @@ void main()
 {
   // Vertex positions for a fullscreen triangle
   vec2 vertices[3] = vec2[](
-      vec2(-1.0, -1.0),
-      vec2( 3.0, -1.0),
-      vec2(-1.0,  3.0)
+      vec2(-3.0, -1.0),
+      vec2( 1.0, -1.0),
+      vec2( 1.0,  3.0)
   );
 
   // Use gl_VertexIndex to fetch the current vertex position
@@ -85,7 +38,7 @@ layout(location = 0) out vec4 FragColor;
 layout(location = 0) in vec2 TexCoords;
 void main()
 {
-	FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	FragColor = vec4(TexCoords, 0.0f, 1.0f);
 }
 )";
 
@@ -226,8 +179,9 @@ namespace Graphics
 		vk::RenderingAttachmentInfo colorAttachment{};
 		colorAttachment.imageView = m_swapchainImageViews[m_nCurSwapchainIdx];
 		colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-		colorAttachment.clearValue = vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f});
+		colorAttachment.clearValue = vk::ClearColorValue(std::array<float, 4>{0.5f, 0.5f, 0.5f, 1.0f});
 		colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+		colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
 
 		vk::RenderingInfo renderPassInfo{};
 		renderPassInfo.layerCount = 1;
@@ -238,30 +192,10 @@ namespace Graphics
 
 		Cmd().beginRendering(renderPassInfo);
 
-		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eGeometry, { VK_NULL_HANDLE });
-		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eTessellationControl, { VK_NULL_HANDLE });
-		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eTessellationEvaluation, { VK_NULL_HANDLE });
-		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eVertex, g_vertexShader);
-		Cmd().bindShadersEXT(vk::ShaderStageFlagBits::eFragment, g_pixelShader);
+		Cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, s_vkPipeline);
 
-		Cmd().setViewportWithCount(vk::Viewport(0, 0, (float)m_nWidth, (float)m_nHeight, 0.0f, 1.0f));
-		Cmd().setScissorWithCount(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight)));
-		Cmd().setDepthTestEnable(false);
-		Cmd().setDepthWriteEnable(false);
-		Cmd().setStencilTestEnable(false);
-		Cmd().setRasterizerDiscardEnable(false);
-		Cmd().setPolygonModeEXT(vk::PolygonMode::eFill);
-		Cmd().setRasterizationSamplesEXT(vk::SampleCountFlagBits::e1);
-		vk::SampleMask sampleMask(0);
-		Cmd().setSampleMaskEXT(vk::SampleCountFlagBits::e1, &sampleMask);
-		Cmd().setVertexInputEXT({}, {});
-		Cmd().setAlphaToCoverageEnableEXT(false);
-		Cmd().setCullMode(vk::CullModeFlagBits::eNone);
-		Cmd().setDepthBiasEnable(false);
-		Cmd().setPrimitiveTopology(vk::PrimitiveTopology::eTriangleList);
-		Cmd().setPrimitiveRestartEnable(false);
-		Cmd().setColorWriteMaskEXT(0, vk::FlagTraits<vk::ColorComponentFlagBits>::allFlags);
-		Cmd().setColorBlendEnableEXT(0, { false });
+		Cmd().setViewport(0, vk::Viewport(0, 0, (float)m_nWidth, (float)m_nHeight, 0.0f, 1.0f));
+		Cmd().setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight)));
 
 		Cmd().draw(3, 1, 0, 0);
 
@@ -318,36 +252,70 @@ namespace Graphics
     m_nWidth  = uint32(CV_r_width);
     m_nHeight = uint32(CV_r_height);
 
+		//if (HMODULE hRenderdoc = LoadLibrary(L"renderdoc.dll"))
+		//{
+		//	pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(hRenderdoc, "RENDERDOC_GetAPI");
+		//	int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_6_0, (void**)&g_RenderDocLib);
+		//	KISS_FATAL_COND(ret == 1, "Failed to load RenderDoc API Version 1.6.0");
+		//}
+
     assert(glfwVulkanSupported() == GLFW_TRUE);
 
     _CreateWindow();
     _InitVulkan();
 
 		std::vector<uint32_t> vertexShaderSPV, pixelShaderSPV;
-		CompileGLSLtoSPIRV(pVertexShader, EShLangVertex, vertexShaderSPV);
-		CompileGLSLtoSPIRV(pPixelShader, EShLangFragment, pixelShaderSPV);
+		VkUtils::CompileGLSLtoSPIRV(pVertexShader, vk::ShaderStageFlagBits::eVertex, vertexShaderSPV);
+		VkUtils::CompileGLSLtoSPIRV(pPixelShader, vk::ShaderStageFlagBits::eFragment, pixelShaderSPV);
 
 		//VkShaderEXT shader = VkUtils::LoadShader("shaders/colored_triangle.vert.spv");
-		{
-			vk::ShaderCreateInfoEXT shaderCreateInfo{};
-			shaderCreateInfo.pCode     = vertexShaderSPV.data();
-			shaderCreateInfo.codeSize  = vertexShaderSPV.size() * sizeof(uint32_t);
-			shaderCreateInfo.stage     = vk::ShaderStageFlagBits::eVertex;
-			shaderCreateInfo.pName     = "main";
-			shaderCreateInfo.nextStage = vk::ShaderStageFlagBits::eFragment;
-			shaderCreateInfo.codeType  = vk::ShaderCodeTypeEXT::eSpirv;
-			g_vertexShader = m_vkDevice.createShaderEXT(shaderCreateInfo);
-		}
 
-		{
-			vk::ShaderCreateInfoEXT shaderCreateInfo{};
-			shaderCreateInfo.pCode     = pixelShaderSPV.data();
-			shaderCreateInfo.codeSize  = pixelShaderSPV.size() * sizeof(uint32_t);
-			shaderCreateInfo.pName     = "main";
-			shaderCreateInfo.stage     = vk::ShaderStageFlagBits::eFragment;
-			shaderCreateInfo.codeType  = vk::ShaderCodeTypeEXT::eSpirv;
-			g_pixelShader = m_vkDevice.createShaderEXT(shaderCreateInfo);
-		}
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages = {
+			vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, m_vkDevice.createShaderModule(vk::ShaderModuleCreateInfo({}, vertexShaderSPV)), "main"),
+			vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, m_vkDevice.createShaderModule(vk::ShaderModuleCreateInfo({}, pixelShaderSPV)), "main")
+		};
+
+		std::vector<vk::DynamicState> dynamicStates = { 
+			vk::DynamicState::eViewport, 
+			vk::DynamicState::eScissor
+		};
+
+		vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo;
+		dynamicStateCreateInfo.setDynamicStates(dynamicStates);
+
+		vk::PipelineMultisampleStateCreateInfo   multisampleStateCreateInfo;
+		vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
+		rasterizationStateCreateInfo.lineWidth = 1.0f;
+
+		vk::PipelineColorBlendStateCreateInfo colorBlendState;
+		vk::PipelineDepthStencilStateCreateInfo depthStencilState;
+
+		vk::PipelineViewportStateCreateInfo viewportState;
+		viewportState.viewportCount = 1;
+		viewportState.scissorCount = 1;
+
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
+		inputAssemblyState.topology = vk::PrimitiveTopology::eTriangleList;
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputState;
+
+		vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
+		pipelineCreateInfo.layout = m_vkDevice.createPipelineLayout(vk::PipelineLayoutCreateInfo());
+		pipelineCreateInfo.pColorBlendState = &colorBlendState;
+		pipelineCreateInfo.pDepthStencilState = &depthStencilState;
+		pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
+		pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+		pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+		pipelineCreateInfo.pTessellationState = nullptr;
+		pipelineCreateInfo.pVertexInputState = &vertexInputState;
+		pipelineCreateInfo.pViewportState = &viewportState;
+		pipelineCreateInfo.pStages = shaderStages.data();
+		pipelineCreateInfo.stageCount = shaderStages.size();
+		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+
+		auto result = m_vkDevice.createGraphicsPipeline(VK_NULL_HANDLE, pipelineCreateInfo);
+		assert(result.result == vk::Result::eSuccess);
+		s_vkPipeline = result.value;
 
 
     // Borderless fullscreen
@@ -457,8 +425,7 @@ namespace Graphics
         std::vector<const char*> deviceExtensions{ 
           VK_KHR_SWAPCHAIN_EXTENSION_NAME,
           VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-					VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
-					VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+					VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME
         };
 
         std::vector<vk::ExtensionProperties> extensionProperties = m_vkPhysicalDevice.enumerateDeviceExtensionProperties();
@@ -470,8 +437,12 @@ namespace Graphics
           KISS_FATAL_COND(it != extensionProperties.end(), "Vulkan: Could not find device extension %s", pDeviceExtension);
         }
 
+				vk::PhysicalDeviceVertexInputDynamicStateFeaturesEXT vertexInputDynamicStateFeatures;
+				vertexInputDynamicStateFeatures.vertexInputDynamicState = VK_TRUE;
+
         vk::PhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures;
         shaderObjectFeatures.shaderObject = VK_TRUE;
+				shaderObjectFeatures.pNext = &vertexInputDynamicStateFeatures;
 
 				vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
 				dynamicRenderingFeatures.dynamicRendering = VK_TRUE;

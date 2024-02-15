@@ -2,17 +2,8 @@
 
 #include "IRenderer.h"
 
-#ifdef _WIN32
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
-
 #define GLFW_INCLUDE_VULKAN
 #include <SDKs/glfw/glfw3.h>
-
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#include <SDKs/vulkan/vulkan.hpp>
-#undef max
-#undef min
 
 namespace Graphics
 {
