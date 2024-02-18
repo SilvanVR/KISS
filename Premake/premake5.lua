@@ -28,7 +28,8 @@ workspace (projectName)
 
 	-- Execute buildscript each time before we build (MAY BECOME TO EXPENSIVE IN THE FUTURE)
 	prebuildcommands { 'cd "$(ProjectDir)../.."', 'call "GenerateProject.bat"' }
-
+	
+	buildoptions { "/wd4267" }
 	linkoptions { "/ignore:4099" } 
 
 	-- filters

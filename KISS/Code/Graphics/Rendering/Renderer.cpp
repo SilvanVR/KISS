@@ -2,10 +2,15 @@
 
 #include "Renderer.h"
 #include "Utils/VkUtils.h"
+#include "Utils/DebugMarker.h"
+#include "Common/OS/OS.h"
 
 #include <SDKs/renderdoc/renderdoc_app.h>
+#include <filesystem>
 
 static RENDERDOC_API_1_6_0* g_RenderDocLib = nullptr;
+
+#define RENDERDOC_CAPTURE_OUTPUT_PATH "../RenderDocCaptures/KISS"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -45,10 +50,13 @@ void main()
 namespace Graphics
 {
   ////////////////////////////////////////////////////////////////////
-  int64 CRenderer::CV_r_width            = 0;
-  int64 CRenderer::CV_r_height           = 0;
-  int64 CRenderer::CV_r_vsync            = 0;
-  int64 CRenderer::CV_r_vulkanValidation = 0;
+  int64 CRenderer::CV_r_width                 = 0;
+  int64 CRenderer::CV_r_height                = 0;
+  int64 CRenderer::CV_r_vsync                 = 0;
+  int64 CRenderer::CV_r_vulkanValidation      = 0;
+  int64 CRenderer::CV_r_renderdoc             = 0;
+  int64 CRenderer::CV_r_renderdocCapture      = 0;
+	string CRenderer::CV_r_renderdocInstallPath = "";
 
   ////////////////////////////////////////////////////////////////////
   void FramebufferSizeCallback(GLFWwindow* window, int width, int height) 
@@ -61,8 +69,12 @@ namespace Graphics
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE); // Close the window when Escape is pressed
     }
-    else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+		else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
 			CRenderer::CV_r_vsync = !CRenderer::CV_r_vsync; // Toggle the r_vsync variable
+		}
+    else if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+			if (g_RenderDocLib)
+				CRenderer::CV_r_renderdocCapture = 1;
     }
     else {
       std::cout << "Key: " << key << " Action: " << action << std::endl;
@@ -164,6 +176,17 @@ namespace Graphics
 
     if (m_nWidth == 0 || m_nHeight == 0)
       return;
+		 
+		if (CV_r_renderdocCapture > 0)
+		{
+			KISS_LOG_ALWAYS("[Renderdoc] Capturing %d frames (Capture stored at %s)", (int)CV_r_renderdocCapture, g_RenderDocLib->GetCaptureFilePathTemplate());
+			g_RenderDocLib->SetActiveWindow(RENDERDOC_DEVICEPOINTER_FROM_VKINSTANCE(VkInstance(m_vkInstance)), nullptr);
+			g_RenderDocLib->TriggerMultiFrameCapture(static_cast<uint32>(CV_r_renderdocCapture));
+			CV_r_renderdocCapture = 0;
+			static uint32 s_PID = 0;
+			if (!OS::IsProcessAlive(s_PID))
+				s_PID = g_RenderDocLib->LaunchReplayUI(1, "");
+		}
 
     vk::ResultValue<uint32_t> nexImage = m_vkDevice.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR(m_vkSwapChain, UINT64_MAX, m_imageAcquiredSemaphore, {}, 1));
     assert(nexImage.result == vk::Result::eSuccess);
@@ -176,30 +199,34 @@ namespace Graphics
     
     VkUtils::SetImageLayout(Cmd(), CurBackbuffer(), m_swapchainFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
-		vk::RenderingAttachmentInfo colorAttachment{};
-		colorAttachment.imageView = m_swapchainImageViews[m_nCurSwapchainIdx];
-		colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-		colorAttachment.clearValue = vk::ClearColorValue(std::array<float, 4>{0.5f, 0.5f, 0.5f, 1.0f});
-		colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-		colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+		{
+			GPU_DEBUG_MARKER(Cmd(), "RenderPass", Color::GREEN);
 
-		vk::RenderingInfo renderPassInfo{};
-		renderPassInfo.layerCount = 1;
-		renderPassInfo.renderArea = vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight));
-		//renderPassInfo.viewMask = 0x1;
-		renderPassInfo.pColorAttachments = &colorAttachment;
-		renderPassInfo.colorAttachmentCount = 1;
+			vk::RenderingAttachmentInfo colorAttachment{};
+			colorAttachment.imageView = m_swapchainImageViews[m_nCurSwapchainIdx];
+			colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+			colorAttachment.clearValue = vk::ClearColorValue(std::array<float, 4>{0.5f, 0.5f, 0.5f, 1.0f});
+			colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+			colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
 
-		Cmd().beginRendering(renderPassInfo);
+			vk::RenderingInfo renderPassInfo{};
+			renderPassInfo.layerCount = 1;
+			renderPassInfo.renderArea = vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight));
+			//renderPassInfo.viewMask = 0x1;
+			renderPassInfo.pColorAttachments = &colorAttachment;
+			renderPassInfo.colorAttachmentCount = 1;
 
-		Cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, s_vkPipeline);
+			Cmd().beginRendering(renderPassInfo);
 
-		Cmd().setViewport(0, vk::Viewport(0, 0, (float)m_nWidth, (float)m_nHeight, 0.0f, 1.0f));
-		Cmd().setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight)));
+			Cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, s_vkPipeline);
 
-		Cmd().draw(3, 1, 0, 0);
+			Cmd().setViewport(0, vk::Viewport(0, 0, (float)m_nWidth, (float)m_nHeight, 0.0f, 1.0f));
+			Cmd().setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_nWidth, m_nHeight)));
 
-		Cmd().endRendering();
+			Cmd().draw(3, 1, 0, 0);
+
+			Cmd().endRendering();
+		}
 
     VkUtils::SetImageLayout(Cmd(), CurBackbuffer(), m_swapchainFormat, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
 
@@ -252,15 +279,9 @@ namespace Graphics
     m_nWidth  = uint32(CV_r_width);
     m_nHeight = uint32(CV_r_height);
 
-		//if (HMODULE hRenderdoc = LoadLibrary(L"renderdoc.dll"))
-		//{
-		//	pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(hRenderdoc, "RENDERDOC_GetAPI");
-		//	int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_6_0, (void**)&g_RenderDocLib);
-		//	KISS_FATAL_COND(ret == 1, "Failed to load RenderDoc API Version 1.6.0");
-		//}
-
     assert(glfwVulkanSupported() == GLFW_TRUE);
 
+		_InitRenderdoc();
     _CreateWindow();
     _InitVulkan();
 
@@ -326,10 +347,13 @@ namespace Graphics
   ////////////////////////////////////////////////////////////////////
   void CRenderer::_RegisterCVars()
   {
-    REGISTER_CVAR("r.width",             &CV_r_width,           1280, "Width of the rendering window");
-    REGISTER_CVAR("r.height",            &CV_r_height,           720, "Height of the rendering window");
-    REGISTER_CVAR("r.vsync",             &CV_r_vsync,              1, "Toggles vsync of the rendering");
-    REGISTER_CVAR("r.vulkan.validation", &CV_r_vulkanValidation,   0, 
+    REGISTER_CVAR("r.renderdoc", &CV_r_renderdoc, 0, "Turns on in engine renderdoc. Please make sure r.renderdoc.InstallPath is set right first");
+    REGISTER_CVAR("r.renderdocCapture", &CV_r_renderdocCapture, 0, "Captures n frames with renderdoc. r.renderdoc must be enabled first");
+    REGISTER_CVAR("r.renderdoc.installPath", &CV_r_renderdocInstallPath, "C:\\Program Files\\RenderDoc\\renderdoc.dll", "Sets the install path for the renderdoc dll for in engine captures");
+    REGISTER_CVAR("r.width",  &CV_r_width, 1280, "Width of the rendering window");
+    REGISTER_CVAR("r.height", &CV_r_height, 720, "Height of the rendering window");
+    REGISTER_CVAR("r.vsync", &CV_r_vsync, 1, "Toggles vsync of the rendering");
+    REGISTER_CVAR("r.vulkan.validation", &CV_r_vulkanValidation, 0, 
       "0: Validation off\n"
       "1: Info+Warnings+Errors\n"
       "2: Warnings+Errors\n"
@@ -425,7 +449,8 @@ namespace Graphics
         std::vector<const char*> deviceExtensions{ 
           VK_KHR_SWAPCHAIN_EXTENSION_NAME,
           VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-					VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME
+					VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
+					VK_EXT_DEBUG_MARKER_EXTENSION_NAME
         };
 
         std::vector<vk::ExtensionProperties> extensionProperties = m_vkPhysicalDevice.enumerateDeviceExtensionProperties();
@@ -580,6 +605,36 @@ namespace Graphics
       m_swapchainImageViews[i] = m_vkDevice.createImageView(imageViewCreateInfo);
     }
   }
+
+  ////////////////////////////////////////////////////////////////////
+	void CRenderer::_InitRenderdoc()
+	{ 
+		if (!CV_r_renderdoc)
+			return;
+
+		HMODULE hRenderdoc = GetModuleHandleA("renderdoc.dll");
+		if (hRenderdoc == NULL)
+		{
+			CVar* pRenderdocInstallPath = g_pConsole->GetCVar("r.renderdoc.installPath");
+			string renderDocPath = pRenderdocInstallPath->GetString() + "\\renderdoc.dll";
+			hRenderdoc = LoadLibraryA(renderDocPath.c_str());
+		}
+
+		if (hRenderdoc == NULL)
+		{
+			CVar* pRenderdocInstallPath = g_pConsole->GetCVar("r.renderdoc.installPath");
+			KISS_LOG_WARN("Failed to load RenderDoc DLL. Did you set the correct installPath? (r.renderdoc.installPath: %s)", pRenderdocInstallPath->GetString().c_str());
+			return;
+		}
+
+		pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(hRenderdoc, "RENDERDOC_GetAPI");
+		int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_6_0, (void**)&g_RenderDocLib);
+		KISS_FATAL_COND(ret == 1, "Failed to load RenderDoc API Version 1.6.0");
+
+		//g_RenderDocLib->MaskOverlayBits(RENDERDOC_OverlayBits::eRENDERDOC_Overlay_None, RENDERDOC_OverlayBits::eRENDERDOC_Overlay_None);
+		//g_RenderDocLib->SetCaptureKeys(nullptr, 0);
+		g_RenderDocLib->SetCaptureFilePathTemplate(RENDERDOC_CAPTURE_OUTPUT_PATH);
+	}
 
   ////////////////////////////////////////////////////////////////////
   void CRenderer::DeinitRenderer()

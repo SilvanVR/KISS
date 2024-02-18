@@ -34,6 +34,9 @@ namespace Graphics
     static int64 CV_r_height;
     static int64 CV_r_vsync;
     static int64 CV_r_vulkanValidation;
+    static int64 CV_r_renderdoc;
+    static int64 CV_r_renderdocCapture;
+    static string CV_r_renderdocInstallPath;
 
   private:
     bool   m_bVSync = true;
@@ -78,5 +81,6 @@ namespace Graphics
     void _CreateWindow();
     void _CreateSwapchain();
     void _CreateSwapchainImages();
+		void _InitRenderdoc();
   };
 };

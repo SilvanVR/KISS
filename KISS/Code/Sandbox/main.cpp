@@ -12,9 +12,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   pCoreEngine->InitEngine();
   pCoreEngine->Run();
 
-	// Inengine renderdoc (Press a button to do a capture)
-
-
   ////////////////////////////////////////////////////
   // TODO
 
@@ -23,10 +20,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, LPSTR cmdline, int cm
   // Time management
 
   // Input manager
-
-  // Vulkan 
-
-  // Optik Profiler
 
   // ImGUI 
 
